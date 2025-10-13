@@ -56,7 +56,7 @@ private:
     // escreve o conteúdo de uma struct de nó em um bloco específico do arquivo
     void write_block(f_ptr block_ptr, const BPlusTreeNode& node);
     
-    // aloca um novo bloco no final do arquivo e retorna seu ponteiro (offset)
+    // aloca um novo bloco no final do arquivo e retorna seu ponteiro
     f_ptr allocate_new_block();
 
     // função auxiliar recursiva para a inserção
