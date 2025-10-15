@@ -62,7 +62,7 @@ private:
     // função auxiliar recursiva para a inserção
     f_ptr insert_internal(int key, f_ptr data_ptr, f_ptr current_ptr, int& new_key, f_ptr& new_child_ptr);
 
-    // função para lidar com a divisão (split) de um nó que está cheio
+    // função para lidar com a divisão de um nó que está cheio
     void split_node(f_ptr parent_ptr, int child_index, f_ptr child_ptr);
 };
 

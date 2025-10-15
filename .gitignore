@@ -8,3 +8,6 @@
 # Ignorar todo o conteúdo do diretório de binários gerados EXCETO o arquivo .gitkeep, para manter o diretório no repo
 /bin/*
 !/bin/.gitkeep
+
+# Ignorar o vscode settings
+.vscode/*
