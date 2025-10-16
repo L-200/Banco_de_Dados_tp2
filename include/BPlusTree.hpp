@@ -8,7 +8,7 @@
 //sizeof(is_leaf) + sizeof(key_count) + sizeof(keys) + sizeof(children) + sizeof(next_leaf) <= 4096
 //1 + 4 + (4 * (m - 1)) + (8 * m) + 8 <= 4096
 //m <= 340.58
-const int ORDER = 4;
+const int ORDER = 340;
 
 // long para representar os ponteiros para outros blocos no arquivo
 using f_ptr = long; //-1 para nulo
