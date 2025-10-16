@@ -29,7 +29,7 @@ all: build
 build: $(addprefix $(BINDIR)/, $(TARGETS))
 
 # regra para criar os 4 programas
-(BINDIR)/%: $(SRCDIR)/%.cpp $(SHARED_OBJS) | $(BINDIR)
+$(BINDIR)/%: $(SRCDIR)/%.cpp $(SHARED_OBJS) | $(BINDIR)
 	@echo "Compilando executáveis"
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
