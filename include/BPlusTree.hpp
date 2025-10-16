@@ -8,7 +8,7 @@
 //sizeof(is_leaf) + sizeof(key_count) + sizeof(keys) + sizeof(children) + sizeof(next_leaf) <= 4096
 //1 + 4 + (4 * (m - 1)) + (8 * m) + 8 <= 4096
 //m <= 340.58
-const int ORDER = 340;
+const int ORDER = 4;
 
 // long para representar os ponteiros para outros blocos no arquivo
 using f_ptr = long; //-1 para nulo
@@ -59,8 +59,20 @@ private:
     // aloca um novo bloco no final do arquivo e retorna seu ponteiro
     f_ptr allocate_new_block();
 
+    // função auxiliar de insert_internal para inserir em uma folha 
+    void insert_into_leaf(BPlusTreeNode& leaf, int key, f_ptr data_ptr);
+
+    // função auxiliar de insert_internal para separar uma folha
+    void split_leaf(BPlusTreeNode& leaf, int key, f_ptr data_ptr, int& promoted_key_out, f_ptr& new_leaf_ptr_out);
+
+    //função axuiliar de insert_internal para inserir um valor
+    void insert_into_internal(BPlusTreeNode& node, int key, f_ptr child_ptr);
+
+    // função auxiliar de insert_internal para separar um nó interno
+    void split_internal(BPlusTreeNode& node, int& key_in_out, f_ptr& child_in_out);
+
     // função auxiliar recursiva para a inserção
-    f_ptr insert_internal(int key, f_ptr data_ptr, f_ptr current_ptr, int& new_key, f_ptr& new_child_ptr);
+    bool insert_internal(f_ptr current_ptr, int key, f_ptr data_ptr, int& promoted_key_out, f_ptr& new_child_ptr_out);
 
     // função para lidar com a divisão de um nó que está cheio
     void split_node(f_ptr parent_ptr, int child_index, f_ptr child_ptr);
