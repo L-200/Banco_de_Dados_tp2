@@ -1,39 +1,42 @@
 #ifndef HASHING_HPP
 #define HASHING_HPP
 
-#include "record.hpp" // AGORA ELE INCLUI O SEU ARQUIVO!
-#include <string>
-#include <fstream>
+#include "record.hpp" //inclui a definição de artigo
+#include <string> 
+#include <fstream>  //biblioteca para manipular arquivos de disco
 
-using f_ptr = long;
+using f_ptr = long; //endereço dentro de um arquivo
 const int RECORDS_PER_BLOCK = 10;
 
 struct DataBlock {
-    Artigo records[RECORDS_PER_BLOCK];
-    int record_count;
-    DataBlock() : record_count(0) {}
+    Artigo records[RECORDS_PER_BLOCK]; //lista para guardar os registros de artigos
+    int record_count; //quantos registros estão ocupando o bloco
+    DataBlock() : record_count(0) {} // construtor que começa a struct com 0 artigos
 };
 
+//classe que vai gerenciar todo o hashing
 class HashingFile {
 public:
 
-    // Destrutor (para o erro da linha 42)
-    ~HashingFile(); 
-
-    // Construtor (que corrigimos antes)
+    //construtor - prepara o arquivo para o uso 
     HashingFile(const std::string& data_file_path, long num_total_blocks); 
 
-    // Inserção (para o erro da linha 72)
+    //destrutor - fecha o arquivo quando o objeto é destruido
+    ~HashingFile();
+
+    //inserção - insere novo artigo no arquivo
     f_ptr insert(const Artigo& new_artigo);
 
-    // Busca (para o erro da linha 79)
+    //busca pelo id - retorna o artigo encontrado pelo id e quantos blocos foram lidos
     Artigo find_by_id(int id, int& blocks_read);
+
 private:
-    std::fstream data_file;
-    long total_blocks;
-    long hash_function(int key);
-    DataBlock read_block(long block_number);
-    void write_block(long block_number, const DataBlock& block);
+
+    std::fstream data_file; //gerencia a conexão para ler e escrever
+    long total_blocks;  //quantidade total de blocos atualmente 
+    long hash_function(int key); //transforma a key em um id 
+    DataBlock read_block(long block_number); // lê um bloco do disco
+    void write_block(long block_number, const DataBlock& block); //escreve um bloco no disco
 };
 
 #endif // HASHING_HPP
