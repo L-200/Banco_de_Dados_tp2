@@ -1,8 +1,15 @@
 #include <iostream>
-#include <hashing.hpp>
-#include <record.hpp>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <stdexcept>
 
+#include "hashing.hpp" 
+#include "record.hpp"
+
+// Implementação do Construtor (Já fornecido)
 HashingFile::HashingFile(const std::string& data_file_path, long num_total_blocks) {
+    // ... (o código do construtor que você já tinha) ...
     total_blocks = num_total_blocks;
     data_file.open(data_file_path, std::ios::in | std::ios::out | std::ios::binary);
 

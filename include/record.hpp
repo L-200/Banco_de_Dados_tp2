@@ -1,30 +1,44 @@
-// struct do artigo científico 
-// funções para serializar (converter o objeto para bytes para salvar em disco) e
-// desserializar (converter os bytes lidos do disco para o objeto original
 #ifndef RECORD_HPP
 #define RECORD_HPP
 
-// ... includes ...
+// --- INCLUDES CORRETOS (Aqui, fora de qualquer struct ou função) ---
+#include <string>
+#include <chrono> 
+#include <ctime>  
 
-// DEFINIÇÃO DA ESTRUTURA
+// FUNÇÕES OBRIGATÓRIAS PARA MANIPULAÇÃO DE DISCO (Assinaturas virão depois da struct)
+// ----------------------------------------------------------------------
+
+// DEFINIÇÃO DA ESTRUTURA Artigo
 struct Artigo {
-    // ... (campos que você definiu: ID, Titulo, Ano, etc.) ...
+    // Membros REAIS e COMPLETOS
+    int ID;                                         
+    char Titulo[301];                               
+    int Ano;                                        
+    char Autores[151];                              
+    int Citacoes;                                   
+    time_t Atualizacao_timestamp;                   
+    char Snippet[1025];                             
+
+    // Construtor padrão (Obrigatório para compilação!)
+    Artigo() : ID(0), Ano(0), Citacoes(0), Atualizacao_timestamp(0) {
+        // Inicialização de strings C
+        Titulo[0] = '\0';
+        Autores[0] = '\0';
+        Snippet[0] = '\0';
+    }
 };
 
 
-// FUNÇÕES OBRIGATÓRIAS PARA MANIPULAÇÃO DE DISCO
+// DECLARAÇÕES DAS FUNÇÕES (que serão implementadas no src/record.cpp)
 
 /**
  * @brief Serializa um objeto Artigo para um array de bytes de tamanho fixo.
- * @param artigo O objeto Artigo a ser serializado.
- * @param buffer O array de bytes onde os dados serão escritos (tamanho fixo).
  */
 void serialize_record(const Artigo& artigo, char* buffer);
 
 /**
  * @brief Desserializa um array de bytes (lido do disco) de volta para um objeto Artigo.
- * @param buffer O array de bytes lido do disco.
- * @return O objeto Artigo reconstruído.
  */
 Artigo deserialize_record(const char* buffer);
 
