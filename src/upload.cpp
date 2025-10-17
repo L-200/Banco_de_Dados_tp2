@@ -61,7 +61,8 @@ int main(int argc, char* argv[]) {
     
     // 1. Verificar argumentos (espera o caminho para o CSV)
     if (argc != 2) {
-        // ...
+        std::cerr << "Uso: " << argv[0] << " <caminho_para_o_arquivo_csv>" << std::endl;
+        return 1;
     }
     // A variável input_csv_path precisa ser definida AQUI:
     const std::string input_csv_path = argv[1]; 
