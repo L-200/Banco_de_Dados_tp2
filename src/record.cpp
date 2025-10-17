@@ -1,21 +1,22 @@
 #include "record.hpp"
-#include <cstring> // Para memcpy
+#include <cstring> // Para std::memcpy
+#include <iostream>
 
-// 1. SERIALIZAÇÃO (Struct para Bytes para salvar no disco)
+// O tamanho real pode ser ligeiramente maior devido ao alinhamento (padding)
+// Usamos sizeof(Artigo) para garantir a precisão no tamanho total do registro.
+const size_t RECORD_SIZE = sizeof(Artigo); 
+
+// 1. SERIALIZAÇÃO (Struct Artigo -> Bytes)
 void serialize_record(const Artigo& artigo, char* buffer) {
-    // Usa memcpy para copiar o struct diretamente para o buffer.
-    // Isso é o método mais simples e direto para structs C++ de tamanho fixo.
-    // O tamanho total do registro é sizeof(Artigo).
-    std::memcpy(buffer, &artigo, sizeof(Artigo));
+    // Copia a struct Artigo inteira para o buffer de bytes.
+    // O buffer deve ter pelo menos o tamanho de RECORD_SIZE.
+    std::memcpy(buffer, &artigo, RECORD_SIZE);
 }
 
-// 2. DESSERIALIZAÇÃO (Bytes do disco de volta para Struct)
+// 2. DESSERIALIZAÇÃO (Bytes -> Struct Artigo)
 Artigo deserialize_record(const char* buffer) {
     Artigo artigo;
-    // Copia os bytes do buffer para a struct Artigo
-    std::memcpy(&artigo, buffer, sizeof(Artigo));
+    // Copia os bytes do buffer para a struct Artigo.
+    std::memcpy(&artigo, buffer, RECORD_SIZE);
     return artigo;
 }
-
-// Você pode adicionar uma constante global em record.hpp para o tamanho fixo:
-// const size_t RECORD_SIZE = sizeof(Artigo);

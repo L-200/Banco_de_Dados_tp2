@@ -59,7 +59,12 @@ bool parse_csv_line(const std::string& line, Artigo& artigo) {
 }
 int main(int argc, char* argv[]) {
     
-    // ... (Verificação de argumentos e definição de input_csv_path) ...
+    // 1. Verificar argumentos (espera o caminho para o CSV)
+    if (argc != 2) {
+        // ...
+    }
+    // A variável input_csv_path precisa ser definida AQUI:
+    const std::string input_csv_path = argv[1]; 
 
     std::cout << "--- INÍCIO DA CARGA DE DADOS ---" << std::endl;
     std::cout << "Arquivo de entrada: " << input_csv_path << std::endl;
