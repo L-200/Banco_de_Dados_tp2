@@ -105,6 +105,11 @@ void BPlusTree::insert(int key, f_ptr data_ptr) {
     }
 }
 
+long BPlusTree::get_total_blocks() {
+    return BPlusTree::block_count;
+}
+//INICIO DAS FUNÇÕES PRIVATE
+
 // retorna true se uma chave foi promovida, false caso contrário
 // promoted_key e new_child_ptr_out são passados para ser usados em caso de retorno de valores para a promoção
 bool BPlusTree::insert_internal(f_ptr current_ptr, int key, f_ptr data_ptr, int& promoted_key_out, f_ptr& new_child_ptr_out) {

@@ -28,6 +28,7 @@ public:
     f_ptr insert(const Artigo& new_artigo);
 
     //busca pelo id - retorna o artigo encontrado pelo id e quantos blocos foram lidos
+    //se não encontrar o artigo retorna um artigo com id -1
     Artigo find_by_id(int id, int& blocks_read);
 
 private:

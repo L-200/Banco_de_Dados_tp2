@@ -45,6 +45,8 @@ public:
     // função principal para buscar uma chave, retornando o ponteiro para o registro de dados e o numero de blocos lidos
     f_ptr search(int key, int& blocks_read);
 
+    long get_total_blocks();
+
 private:
     std::fstream index_file;    // gerencia conexão para ler e escrever no arquivo de índice
     f_ptr root_ptr;             // ponteiro para o nó raiz no arquivo
