@@ -13,50 +13,67 @@
 
 // IMPORTANTE: Esta é a implementação da função que você DECLAROU em include/upload.hpp
 bool parse_csv_line(const std::string& line, Artigo& artigo) {
+    // Ignorar linhas vazias
+    if (line.empty()) return false;
+
+    // Detectar delimitador: se tiver ';', usa ';', senão usa ','
+    char delimiter = (line.find(';') != std::string::npos) ? ';' : ',';
+
     std::stringstream ss(line);
     std::string field;
-    
-    // Tentativa de parsing
+    std::string fields[7];
+    int i = 0;
+
+    // Extrair até 7 campos (esperados)
+    while (std::getline(ss, field, delimiter) && i < 7) {
+        // Remover aspas iniciais e finais, se houver
+        if (!field.empty() && field.front() == '"') field.erase(0, 1);
+        if (!field.empty() && field.back() == '"') field.pop_back();
+
+        // Substituir "NULL" por string vazia
+        if (field == "NULL") field.clear();
+
+        fields[i++] = field;
+    }
+
+    // Se a linha tiver menos de 7 campos, descarta
+    if (i < 7) {
+        std::cerr << "Linha ignorada (campos insuficientes): " << line << std::endl;
+        return false;
+    }
+
     try {
         // 1. ID (inteiro)
-        if (!std::getline(ss, field, ',')) return false;
-        artigo.ID = std::atoi(field.c_str());
+        artigo.ID = std::atoi(fields[0].c_str());
 
         // 2. Título (alfa 300)
-        if (!std::getline(ss, field, ',')) return false;
-        std::strncpy(artigo.Titulo, field.c_str(), 300);
-        artigo.Titulo[300] = '\0'; // Garantir terminação em C
+        std::strncpy(artigo.Titulo, fields[1].c_str(), 300);
+        artigo.Titulo[300] = '\0';
 
         // 3. Ano (inteiro)
-        if (!std::getline(ss, field, ',')) return false;
-        artigo.Ano = std::atoi(field.c_str());
+        artigo.Ano = std::atoi(fields[2].c_str());
 
         // 4. Autores (alfa 150)
-        if (!std::getline(ss, field, ',')) return false;
-        std::strncpy(artigo.Autores, field.c_str(), 150);
+        std::strncpy(artigo.Autores, fields[3].c_str(), 150);
         artigo.Autores[150] = '\0';
 
         // 5. Citações (inteiro)
-        if (!std::getline(ss, field, ',')) return false;
-        artigo.Citacoes = std::atoi(field.c_str());
+        artigo.Citacoes = std::atoi(fields[4].c_str());
 
-        // 6. Atualização (data e hora - time_t)
-        if (!std::getline(ss, field, ',')) return false;
-        // Assume que a string de data/hora é grande, simplificamos para atol por enquanto
-        artigo.Atualizacao_timestamp = std::atol(field.c_str());
+        // 6. Atualização (timestamp)
+        artigo.Atualizacao_timestamp = std::atol(fields[5].c_str());
 
-        // 7. Snippet (alfa 1024 - último campo)
-        if (!std::getline(ss, field)) return false; 
-        std::strncpy(artigo.Snippet, field.c_str(), 1024);
+        // 7. Snippet (alfa 1024)
+        std::strncpy(artigo.Snippet, fields[6].c_str(), 1024);
         artigo.Snippet[1024] = '\0';
 
         return true;
     } catch (...) {
-        // Captura qualquer erro inesperado durante a conversão
-        std::cerr << "ERRO DE PARSING: Linha mal formatada." << std::endl;
+        std::cerr << "ERRO DE PARSING: Linha mal formatada: " << line << std::endl;
         return false;
     }
 }
+
 int main(int argc, char* argv[]) {
     
     // 1. Verificar argumentos (espera o caminho para o CSV)
@@ -79,7 +96,7 @@ int main(int argc, char* argv[]) {
     // --- INICIALIZAÇÃO E LOOP PRINCIPAL ---
 
     // OBS: O 'initial_blocks' deve ser calculado. Usamos 1000 como placeholder.
-    long initial_blocks = 1000; 
+    long initial_blocks = 775000; 
 
     try {
         // Inicializa o arquivo de dados (Hashing)
