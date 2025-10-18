@@ -1,10 +1,10 @@
-#include <BPlusTree.hpp>
+#include "BPlusTree_long.hpp"
 #include <iostream> //para debug
 #include <vector> //para vetor dinâmico
 #include <algorithm> //std::sort e std::find
 
 //abrir o arquivo e incializar caso seja um arquivo novo
-BPlusTree::BPlusTree(const std::string& index_file_path) {
+BPlusTree_long::BPlusTree_long(const std::string& index_file_path) {
     index_file.open(index_file_path, std::ios::in | std::ios::out | std::ios::binary); //abre no modo binario para leitura e escrita
 
     //se não existir o arquivo, cria e inicializa a arvore
@@ -22,7 +22,7 @@ BPlusTree::BPlusTree(const std::string& index_file_path) {
             throw std::runtime_error("ERRO: Não foi possível abrir o arquivo de índice após criar");
 
         //inicializando a arvore
-        BPlusTreeNode node_raiz;
+        BPlusTree_long_Node node_raiz;
         node_raiz.is_leaf = true;
         root_ptr = allocate_new_block();
         write_block(root_ptr, node_raiz);
@@ -32,26 +32,26 @@ BPlusTree::BPlusTree(const std::string& index_file_path) {
         long file_size = index_file.tellg(); //tellg fala a posição em que o cursor está
 
         if (file_size == 0) { //arquivo existe mas arvore ainda não foi inicializada
-            BPlusTreeNode node_raiz;
+            BPlusTree_long_Node node_raiz;
             node_raiz.is_leaf = true;
             root_ptr = allocate_new_block();
             write_block(root_ptr, node_raiz);
         } else { //arvoore existe e está no inicio do arquivo
             root_ptr = 0;
-            block_count = file_size / sizeof(BPlusTreeNode);
+            block_count = file_size / sizeof(BPlusTree_long_Node);
         }
     } 
 }
 
 //fecha o arquivo
-BPlusTree::~BPlusTree() {
+BPlusTree_long::~BPlusTree_long() {
     if(index_file.is_open()) {
         index_file.close();
     }
 }
 
 //encontra uma chave e retorna o seu ponteiro 
-f_ptr BPlusTree::search(int key, int& blocks_read) {
+f_ptr BPlusTree_long::search(long long key, int& blocks_read) {
 
     blocks_read = 0;
 
@@ -60,7 +60,7 @@ f_ptr BPlusTree::search(int key, int& blocks_read) {
     }
 
     f_ptr ptr_atual = root_ptr;
-    BPlusTreeNode node_atual;
+    BPlusTree_long_Node node_atual;
 
     while (true) {
         node_atual = read_block(ptr_atual);
@@ -84,14 +84,14 @@ f_ptr BPlusTree::search(int key, int& blocks_read) {
     }
 }
 
-void BPlusTree::insert(int key, f_ptr data_ptr) {
-    int promoted_key;
+void BPlusTree_long::insert(long long key, f_ptr data_ptr) {
+    long long promoted_key;
     f_ptr new_child_ptr;
 
     //se retornar true a chave foi promovida até a categoria de nova raiz
     if (insert_internal(root_ptr, key, data_ptr, promoted_key, new_child_ptr)) {
 
-        BPlusTreeNode new_root;
+        BPlusTree_long_Node new_root;
         new_root.children[0] = root_ptr;
         new_root.children[1] = new_child_ptr;
         new_root.is_leaf = false;
@@ -105,20 +105,20 @@ void BPlusTree::insert(int key, f_ptr data_ptr) {
     }
 }
 
-long BPlusTree::get_total_blocks() {
-    return BPlusTree::block_count;
+long BPlusTree_long::get_total_blocks() {
+    return BPlusTree_long::block_count;
 }
 
 //INICIO DAS FUNÇÕES PRIVATE
 
 // retorna true se uma chave foi promovida, false caso contrário
 // promoted_key e new_child_ptr_out são passados para ser usados em caso de retorno de valores para a promoção
-bool BPlusTree::insert_internal(f_ptr current_ptr, int key, f_ptr data_ptr, int& promoted_key_out, f_ptr& new_child_ptr_out) {
+bool BPlusTree_long::insert_internal(f_ptr current_ptr, long long key, f_ptr data_ptr, long long& promoted_key_out, f_ptr& new_child_ptr_out) {
 
-    BPlusTreeNode current_node = read_block(current_ptr);
+    BPlusTree_long_Node current_node = read_block(current_ptr);
 
     if (current_node.is_leaf) { //casos base
-        if (current_node.key_count < ORDER - 1) { //podemos inserir aqui
+        if (current_node.key_count < ORDER_LONG - 1) { //podemos inserir aqui
             insert_into_leaf(current_node, key, data_ptr);
             write_block(current_ptr, current_node);
             return false;
@@ -136,7 +136,7 @@ bool BPlusTree::insert_internal(f_ptr current_ptr, int key, f_ptr data_ptr, int&
         f_ptr child_ptr = current_node.children[child_index];
 
         if (insert_internal(child_ptr, key, data_ptr, promoted_key_out, new_child_ptr_out)) {
-            if (current_node.key_count < ORDER - 1) {
+            if (current_node.key_count < ORDER_LONG - 1) {
                 insert_into_internal(current_node, promoted_key_out, new_child_ptr_out);
                 write_block(current_ptr, current_node);
                 return false;
@@ -150,7 +150,7 @@ bool BPlusTree::insert_internal(f_ptr current_ptr, int key, f_ptr data_ptr, int&
     }
 }
 
-void BPlusTree::insert_into_leaf(BPlusTreeNode& leaf, int key, f_ptr data_ptr) {
+void BPlusTree_long::insert_into_leaf(BPlusTree_long_Node& leaf, long long key, f_ptr data_ptr) {
     int pos = 0;
     while (pos < leaf.key_count && leaf.keys[pos] < key) { //descobre aonde vamos enfiar
         pos++;
@@ -166,16 +166,16 @@ void BPlusTree::insert_into_leaf(BPlusTreeNode& leaf, int key, f_ptr data_ptr) {
     leaf.key_count++;
 }
 
-void BPlusTree::split_leaf(BPlusTreeNode& leaf, int key, f_ptr data_ptr, int& promoted_key_out, f_ptr& new_leaf_ptr_out) {
-    std::vector<std::pair<int, f_ptr>> temp_vet_pairs;
-    temp_vet_pairs.reserve(ORDER);
+void BPlusTree_long::split_leaf(BPlusTree_long_Node& leaf, long long key, f_ptr data_ptr, long long& promoted_key_out, f_ptr& new_leaf_ptr_out) {
+    std::vector<std::pair<long long, f_ptr>> temp_vet_pairs;
+    temp_vet_pairs.reserve(ORDER_LONG);
     for (int i = 0; i < leaf.key_count; i++) {
         temp_vet_pairs.push_back({leaf.keys[i], leaf.children[i]});
     }
     temp_vet_pairs.push_back({key, data_ptr});
     std::sort(temp_vet_pairs.begin(), temp_vet_pairs.end(),[](auto &a, auto &b){ return a.first < b.first; }); 
 
-    BPlusTreeNode new_leaf;
+    BPlusTree_long_Node new_leaf;
     new_leaf.is_leaf = true;
     new_leaf_ptr_out = allocate_new_block();
 
@@ -205,7 +205,7 @@ void BPlusTree::split_leaf(BPlusTreeNode& leaf, int key, f_ptr data_ptr, int& pr
 }
 
 
-void BPlusTree::insert_into_internal(BPlusTreeNode& node, int key, f_ptr child_ptr) {
+void BPlusTree_long::insert_into_internal(BPlusTree_long_Node& node, long long key, f_ptr child_ptr) {
     int pos = 0;
     while (pos < node.key_count && node.keys[pos] < key) {
         pos++;
@@ -221,9 +221,9 @@ void BPlusTree::insert_into_internal(BPlusTreeNode& node, int key, f_ptr child_p
     node.key_count++;
 }
 
-void BPlusTree::split_internal(BPlusTreeNode& node, int& promoted_key, f_ptr& child_ptr) {
+void BPlusTree_long::split_internal(BPlusTree_long_Node& node, long long& promoted_key, f_ptr& child_ptr) {
     // copiando temporariamente as chaves e ponteiros do nó atual
-    std::vector<int> temp_vet_keys(node.keys, node.keys + node.key_count);
+    std::vector<long long> temp_vet_keys(node.keys, node.keys + node.key_count);
     std::vector<f_ptr> temp_vet_children(node.children, node.children + node.key_count + 1);
 
     // encontra posição de inserção da chave
@@ -235,13 +235,13 @@ void BPlusTree::split_internal(BPlusTreeNode& node, int& promoted_key, f_ptr& ch
     temp_vet_children.insert(temp_vet_children.begin() + pos + 1, child_ptr); // filho sempre à direita da key
 
 
-    int split_point = ORDER / 2;
+    int split_point = ORDER_LONG / 2;
 
     // a chave do meio é promovida para o nível superior
     promoted_key = temp_vet_keys[split_point];
 
     // criando o novo node
-    BPlusTreeNode new_internal_node;
+    BPlusTree_long_Node new_internal_node;
     new_internal_node.is_leaf = false;
     child_ptr = allocate_new_block();
 
@@ -259,25 +259,25 @@ void BPlusTree::split_internal(BPlusTreeNode& node, int& promoted_key, f_ptr& ch
 }
 
 
-BPlusTreeNode BPlusTree::read_block(f_ptr block_ptr) {
-    BPlusTreeNode node;
+BPlusTree_long_Node BPlusTree_long::read_block(f_ptr block_ptr) {
+    BPlusTree_long_Node node;
     index_file.seekg(block_ptr);
-    index_file.read(reinterpret_cast<char*>(&node), sizeof(BPlusTreeNode));
+    index_file.read(reinterpret_cast<char*>(&node), sizeof(BPlusTree_long_Node));
     return node;
 }
 
-void BPlusTree::write_block(f_ptr block_ptr, const BPlusTreeNode& node) {
+void BPlusTree_long::write_block(f_ptr block_ptr, const BPlusTree_long_Node& node) {
     index_file.seekp(block_ptr);
-    index_file.write(reinterpret_cast<const char*>(&node), sizeof(BPlusTreeNode));
+    index_file.write(reinterpret_cast<const char*>(&node), sizeof(BPlusTree_long_Node));
 }
 
-f_ptr BPlusTree::allocate_new_block() {
+f_ptr BPlusTree_long::allocate_new_block() {
     // move o ponteiro para o final do arquivo para encontrar o offset do novo bloco
     index_file.seekp(0, std::ios::end);
     f_ptr new_block_ptr = index_file.tellp();
     
     // escreve um nó vazio para de fato alocar o espaço no arquivo
-    BPlusTreeNode empty_node{};
+    BPlusTree_long_Node empty_node{};
     write_block(new_block_ptr, empty_node);
 
     block_count++;

@@ -7,10 +7,10 @@
 #include "hashing.hpp" 
 #include "record.hpp"
 
-// Implementação do Construtor (Já fornecido)
+// construtor 
 HashingFile::HashingFile(const std::string& data_file_path, long num_total_blocks) {
-    // ... (o código do construtor que você já tinha) ...
     total_blocks = num_total_blocks;
+    //tentando abrir data file
     data_file.open(data_file_path, std::ios::in | std::ios::out | std::ios::binary);
 
     if (!data_file.is_open()) {
@@ -36,6 +36,7 @@ HashingFile::HashingFile(const std::string& data_file_path, long num_total_block
     }
 }
 
+//fechando o arquivo
 HashingFile::~HashingFile() {
     if (data_file.is_open()) {
         data_file.close();
@@ -63,6 +64,7 @@ f_ptr HashingFile::insert(const Artigo& new_artigo) {
         //se voltamos ao bloco inicial não temos mais espaço para inserir o novo arquivo
         if (current_block_num == initial_block) {
             std::cerr << "ERRO: Arquivo de dados está cheio!" <<std::endl;
+            return -1;
         }
     }
     return -1; //falha na inserção
@@ -110,7 +112,7 @@ DataBlock HashingFile::read_block(long block_number) {
     DataBlock block;
 
     //calculando o endereço do arquivo e mudando o cursor de leitura para a posição
-    f_ptr offset = block_number + sizeof(DataBlock);
+    f_ptr offset = block_number * sizeof(DataBlock);
     data_file.seekg(offset);
     //lendo e retornando o que leu 
     data_file.read(reinterpret_cast<char*>(&block), sizeof(DataBlock));
@@ -120,7 +122,7 @@ DataBlock HashingFile::read_block(long block_number) {
 void HashingFile::write_block(long block_number, const DataBlock& block) {
     //calculando o endereço e mudando o cursor de escritura para ele
     f_ptr offset = block_number * sizeof(DataBlock);
-    data_file.seekg(offset);
+    data_file.seekp(offset);
 
     //escrevendo
     data_file.write(reinterpret_cast<const char*>(&block), sizeof(DataBlock));

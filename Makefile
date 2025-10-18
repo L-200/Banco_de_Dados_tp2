@@ -56,7 +56,7 @@ docker-build:
 	@docker build -t $(IMAGE_NAME) .
 
 docker-run-upload:
-	@docker run --rm -v "$(shell pwd)/data:/data" $(IMAGE_NAME) ./bin/upload /data/input.csv
+	@docker run --rm -v "$(shell pwd)/data:/data" $(IMAGE_NAME) ./bin/upload /data/artigo.csv
 docker-run-findrec:
 	@docker run --rm -v $(shell pwd)/data:/data $(IMAGE_NAME) ./bin/findrec $(ARGS)
 docker-run-seek1:

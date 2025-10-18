@@ -6,7 +6,11 @@
 #include <fstream>  //biblioteca para manipular arquivos de disco
 
 using f_ptr = long; //endereço dentro de um arquivo
-const int RECORDS_PER_BLOCK = 10;
+
+//id(4) + titulo(301) + ano(4) + autores(151) + citacoes(4) + atualização(20) + snippet(1025) ≃ 1509 bytes
+// 1059*N + record_count(4) = 4096
+//N <= 2.71
+const int RECORDS_PER_BLOCK = 2;
 
 struct DataBlock {
     Artigo records[RECORDS_PER_BLOCK]; //lista para guardar os registros de artigos
