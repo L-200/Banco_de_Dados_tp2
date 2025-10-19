@@ -13,7 +13,7 @@ BINDIR = bin
 TARGETS = upload findrec seek1 seek2
 
 # arquivos fonte compartilhados entre os targets
-SHARED_SRCS = $(wildcard $(SRCDIR)/BPlusTree.cpp $(SRCDIR)/hashing.cpp $(SRCDIR)/record.cpp)
+SHARED_SRCS = $(wildcard $(SRCDIR)/BPlusTree.cpp $(SRCDIR)/BPlusTree_long.cpp $(SRCDIR)/hashing.cpp $(SRCDIR)/record.cpp)
 
 # converte os compartilhados em arquivos objeto
 SHARED_OBJS = $(SHARED_SRCS:.cpp=.o)

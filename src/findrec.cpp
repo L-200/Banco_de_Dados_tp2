@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
     }
 
     // ATENÇÃO: O número total de blocos deve ser o mesmo usado pelo programa 'upload'.
-    long total_blocks = 1000; 
+    long total_blocks = 775000; 
     const std::string data_file_path = "data/data_file.dat";
 
     try {

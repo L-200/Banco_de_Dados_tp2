@@ -46,6 +46,7 @@ BPlusTree_long::BPlusTree_long(const std::string& index_file_path) {
 //fecha o arquivo
 BPlusTree_long::~BPlusTree_long() {
     if(index_file.is_open()) {
+        flush_cache();
         index_file.close();
     }
 }
@@ -260,25 +261,61 @@ void BPlusTree_long::split_internal(BPlusTree_long_Node& node, long long& promot
 
 
 BPlusTree_long_Node BPlusTree_long::read_block(f_ptr block_ptr) {
+    // Tenta achar no cache
+    auto it = node_cache.find(block_ptr);
+    if (it != node_cache.end()) {
+        return it->second;
+    }
+
+    // Se não estiver, lê do disco
     BPlusTree_long_Node node;
     index_file.seekg(block_ptr);
     index_file.read(reinterpret_cast<char*>(&node), sizeof(BPlusTree_long_Node));
+
+    //  Armazena no cache
+    node_cache[block_ptr] = node;
     return node;
 }
 
+void BPlusTree_long::flush_cache() {
+    for (const auto& pair : node_cache) {
+        f_ptr block_ptr = pair.first;
+        const BPlusTree_long_Node& node = pair.second;
+
+        index_file.seekp(block_ptr);
+        index_file.write(reinterpret_cast<const char*>(&node), sizeof(BPlusTree_long_Node));
+    }
+
+    index_file.flush();
+    node_cache.clear();
+}
+
 void BPlusTree_long::write_block(f_ptr block_ptr, const BPlusTree_long_Node& node) {
-    index_file.seekp(block_ptr);
-    index_file.write(reinterpret_cast<const char*>(&node), sizeof(BPlusTree_long_Node));
+    // Atualiza o cache
+    node_cache[block_ptr] = node;
+
+    // Se o cache estiver muito cheio, descarrega pro disco
+    if (node_cache.size() > MAX_CACHE_SIZE) {
+        flush_cache();
+    }
+
 }
 
 f_ptr BPlusTree_long::allocate_new_block() {
-    // move o ponteiro para o final do arquivo para encontrar o offset do novo bloco
+    // move o ponteiro para o final do arquivo
     index_file.seekp(0, std::ios::end);
     f_ptr new_block_ptr = index_file.tellp();
     
-    // escreve um nó vazio para de fato alocar o espaço no arquivo
+    // escreve um nó vazio DIRETAMENTE NO DISCO para alocar o espaço
     BPlusTree_long_Node empty_node{};
-    write_block(new_block_ptr, empty_node);
+    index_file.write(reinterpret_cast<const char*>(&empty_node), sizeof(BPlusTree_long_Node));
+
+    // Adiciona verificação de erro
+    if (index_file.fail()) {
+        throw std::runtime_error("ERRO FATAL: Falha ao alocar/escrever novo bloco no disco.");
+    }
+    
+    // A chamada 'write_block(new_block_ptr, empty_node);' foi removida daqui
 
     block_count++;
     return new_block_ptr;

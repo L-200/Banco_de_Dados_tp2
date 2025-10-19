@@ -38,6 +38,9 @@ HashingFile::HashingFile(const std::string& data_file_path, long num_total_block
 
 //fechando o arquivo
 HashingFile::~HashingFile() {
+    if (!block_cache.empty()) {
+        flush_cache();
+    }
     if (data_file.is_open()) {
         data_file.close();
     }
@@ -85,9 +88,11 @@ Artigo HashingFile::find_by_id(int id, int& blocks_read) {
             }
         }
 
+        /*  trecho removido pois levava o algoritmo a não achar artigos que sofreram colisões e o bloco seguinte ja estava cheio
         if (block.record_count < RECORDS_PER_BLOCK) { //artigo deveria estar nesse bloco
             break;
         }
+        */
 
         current_block_num = (current_block_num + 1) % total_blocks;
 
@@ -109,21 +114,41 @@ long HashingFile::hash_function(int key) { //padrão da industria, tenta gerar u
 }
 
 DataBlock HashingFile::read_block(long block_number) {
-    DataBlock block;
+    //procurando bloco no cache
+    auto it = block_cache.find(block_number);
+    //verificando se o bloco foi encontrado no cache
+    if (it != block_cache.end()) { 
+        return it->second; //retorna o bloco diretamente da memoria
+    }
 
-    //calculando o endereço do arquivo e mudando o cursor de leitura para a posição
+    //se o bloco não esta no cache precisamos ler ele do arquivo
+    DataBlock block;
     f_ptr offset = block_number * sizeof(DataBlock);
     data_file.seekg(offset);
-    //lendo e retornando o que leu 
     data_file.read(reinterpret_cast<char*>(&block), sizeof(DataBlock));
+
     return block;
 }
 
-void HashingFile::write_block(long block_number, const DataBlock& block) {
-    //calculando o endereço e mudando o cursor de escritura para ele
-    f_ptr offset = block_number * sizeof(DataBlock);
-    data_file.seekp(offset);
+//escreve todos os blocos dentro do cache de volta no disco
+void HashingFile::flush_cache() {
+    for (const auto& pair : block_cache) {
+        long block_number = pair.first; //pegando o numero do bloco
+        const DataBlock& block = pair.second; //pegando para o bloco de dados
 
-    //escrevendo
-    data_file.write(reinterpret_cast<const char*>(&block), sizeof(DataBlock));
+        f_ptr offset = block_number * sizeof(DataBlock);
+        data_file.seekp(offset);
+        data_file.write(reinterpret_cast<const char*>(&block), sizeof(DataBlock));
+    }
+
+    data_file.flush();
+    block_cache.clear();
+}
+
+void HashingFile::write_block(long block_number, const DataBlock& block) {
+    block_cache[block_number] = block;
+
+    if (block_cache.size() >= CACHE_LIMIT) {
+        flush_cache();
+    }
 }

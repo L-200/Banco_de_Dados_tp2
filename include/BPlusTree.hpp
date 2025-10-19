@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <unordered_map>
 
 //sizeof(is_leaf) + sizeof(key_count) + sizeof(keys) + sizeof(children) + sizeof(next_leaf) <= 4096
 //1 + 4 + (4 * (m - 1)) + (8 * m) + 8 <= 4096
@@ -48,12 +49,19 @@ public:
     long get_total_blocks();
 
 private:
+
+    std::unordered_map<f_ptr, BPlusTreeNode> node_cache;
+    static const int MAX_CACHE_SIZE = 128;
+
     std::fstream index_file;    // gerencia conexão para ler e escrever no arquivo de índice
     f_ptr root_ptr;             // ponteiro para o nó raiz no arquivo
     long block_count;           // contador total de blocos no arquivo
 
     // lê um bloco do arquivo de índice e o carrega em uma struct de nó
     BPlusTreeNode read_block(f_ptr block_ptr);
+
+    // escreve todos os itens presentes no cache de volta
+    void flush_cache();
 
     // escreve o conteúdo de uma struct de nó em um bloco específico do arquivo
     void write_block(f_ptr block_ptr, const BPlusTreeNode& node);

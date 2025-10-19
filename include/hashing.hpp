@@ -4,6 +4,7 @@
 #include "record.hpp" //inclui a definição de artigo
 #include <string> 
 #include <fstream>  //biblioteca para manipular arquivos de disco
+#include <unordered_map>
 
 using f_ptr = long; //endereço dentro de um arquivo
 
@@ -37,11 +38,20 @@ public:
 
 private:
 
+    std::unordered_map<long, DataBlock> block_cache; // bloco_número -> bloco em memória
+    const size_t CACHE_LIMIT = 1024; // número máximo de blocos no cache antes de flush
     std::fstream data_file; //gerencia a conexão para ler e escrever
     long total_blocks;  //quantidade total de blocos atualmente 
+
+
     long hash_function(int key); //transforma a key em um id 
+
     DataBlock read_block(long block_number); // lê um bloco do disco
+
+    void flush_cache();
+
     void write_block(long block_number, const DataBlock& block); //escreve um bloco no disco
+
 };
 
 #endif // HASHING_HPP

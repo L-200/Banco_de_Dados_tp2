@@ -26,7 +26,9 @@ BPlusTree::BPlusTree(const std::string& index_file_path) {
         node_raiz.is_leaf = true;
         root_ptr = allocate_new_block();
         write_block(root_ptr, node_raiz);
+        std::cout << "DEBUG BPlusTree Construtor: Arquivo criado/reaberto." << std::endl; // LOG
     } else {
+        std::cout << "DEBUG BPlusTree Construtor: Arquivo existente aberto." << std::endl; // LOG
         //se arquivo já existe, calcula o numero de blocos e assume que raiz está no bloco 0
         index_file.seekg(0, std::ios::end);
         long file_size = index_file.tellg(); //tellg fala a posição em que o cursor está
@@ -36,16 +38,23 @@ BPlusTree::BPlusTree(const std::string& index_file_path) {
             node_raiz.is_leaf = true;
             root_ptr = allocate_new_block();
             write_block(root_ptr, node_raiz);
+            std::cout << "DEBUG BPlusTree Construtor: Arquivo existente estava vazio. Inicializado." << std::endl; // LOG
         } else { //arvoore existe e está no inicio do arquivo
             root_ptr = 0;
             block_count = file_size / sizeof(BPlusTreeNode);
+            std::cout << "DEBUG BPlusTree Construtor: Arquivo existente. FileSize=" << file_size 
+                      << ", SizeofNode=" << sizeof(BPlusTreeNode) 
+                      << ", Calculated block_count=" << block_count << std::endl;
         }
-    } 
-}
+      
+      if (!index_file.is_open() || index_file.fail()) {
+         std::cerr << "ERRO FATAL no Construtor BPlusTree: Estado do arquivo invalido apos abertura/criacao!" << std::endl;}
+}}
 
 //fecha o arquivo
 BPlusTree::~BPlusTree() {
     if(index_file.is_open()) {
+        flush_cache();
         index_file.close();
     }
 }
@@ -260,15 +269,44 @@ void BPlusTree::split_internal(BPlusTreeNode& node, int& promoted_key, f_ptr& ch
 
 
 BPlusTreeNode BPlusTree::read_block(f_ptr block_ptr) {
+    // tentando achar no cache
+    auto it = node_cache.find(block_ptr);
+    if (it != node_cache.end()) {
+        return it->second;
+    }
+
+    // se não estiver, lê do disco
     BPlusTreeNode node;
     index_file.seekg(block_ptr);
     index_file.read(reinterpret_cast<char*>(&node), sizeof(BPlusTreeNode));
+
+    // armazena no cache
+    node_cache[block_ptr] = node;
     return node;
 }
 
+void BPlusTree::flush_cache() {
+    for (const auto& pair : node_cache) {
+        f_ptr block_ptr = pair.first;
+        const BPlusTreeNode& node = pair.second;
+
+        index_file.seekp(block_ptr);
+        index_file.write(reinterpret_cast<const char*>(&node), sizeof(BPlusTreeNode));
+    }
+
+    index_file.flush();
+    node_cache.clear();
+}
+
+
 void BPlusTree::write_block(f_ptr block_ptr, const BPlusTreeNode& node) {
-    index_file.seekp(block_ptr);
-    index_file.write(reinterpret_cast<const char*>(&node), sizeof(BPlusTreeNode));
+    // atualizando o cache
+    node_cache[block_ptr] = node;
+
+    // se o cache estiver muito cheio, descarrega pro disco
+    if (node_cache.size() > MAX_CACHE_SIZE) {
+        flush_cache();
+    }
 }
 
 f_ptr BPlusTree::allocate_new_block() {
