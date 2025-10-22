@@ -150,12 +150,12 @@ int main(int argc, char* argv[]) {
         // B. Índice Primário (B+Tree para ID int)
         //    Usa caminho absoluto /data/
         BPlusTree primary_index("/data/primary_index.idx");
-        std::cout << "Índice primário inicializado: /data/primary_index.idx" << std::endl;
+        std::cout << "\nÍndice primário inicializado: /data/primary_index.idx" << std::endl;
 
         // C. Índice Secundário (B+Tree para hash long long do Título)
         //    Usa caminho absoluto /data/
         BPlusTree_long secondary_index("/data/secondary_index.idx");
-        std::cout << "Índice secundário inicializado: /data/secondary_index.idx" << std::endl;
+        std::cout << "\nÍndice secundário inicializado: /data/secondary_index.idx" << std::endl;
 
         // --- Loop Principal de Leitura e Inserção ---
         

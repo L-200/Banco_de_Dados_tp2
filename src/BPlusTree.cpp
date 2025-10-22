@@ -77,7 +77,6 @@ BPlusTree::BPlusTree(const std::string& index_file_path) {
             // inicializa variáveis membro com valores lidos
             root_ptr = metadata.root_ptr_offset;
             block_count = metadata.block_count;
-            std::cout << "DEBUG BPlusTree Construtor: Metadados lidos. root_ptr=" << root_ptr << ", block_count=" << block_count << std::endl;
 
              // validação básica
             if (root_ptr < DATA_START_OFFSET || block_count == 0 || (root_ptr + sizeof(BPlusTreeNode) > file_size && block_count > 0)) {
@@ -98,7 +97,6 @@ BPlusTree::~BPlusTree() {
         flush_cache(); // descarrega nós modificados para o disco
 
         // salvando metadados atualizados
-        std::cout << "DESTRUTOR DA AROVRE B+ (INT): Salvando metadados finais... root_ptr=" << root_ptr << ", block_count=" << block_count << std::endl;
         BPlusTreeMetadata metadata;
         metadata.root_ptr_offset = root_ptr; // usa o valor atual da variável
         metadata.block_count = block_count; // usa o valor atual da variável

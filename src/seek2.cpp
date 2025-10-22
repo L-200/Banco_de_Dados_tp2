@@ -9,7 +9,15 @@
 
 // Função auxiliar para imprimir o artigo
 void print_artigo(const Artigo& artigo) {
-    // ... (mesma função dos outros programas)
+   std::cout << "------------------------------------------" << std::endl;
+    std::cout << "ID: " << artigo.ID << std::endl;
+    std::cout << "Titulo: " << artigo.Titulo << std::endl;
+    std::cout << "Ano: " << artigo.Ano << std::endl;
+    std::cout << "Autores: " << artigo.Autores << std::endl;
+    std::cout << "Citacoes: " << artigo.Citacoes << std::endl;
+    std::cout << "Atualização: " << artigo.Atualizacao_timestamp << std::endl; // Assumindo timestamp
+    std::cout << "Snippet: " << artigo.Snippet << std::endl;
+    std::cout << "------------------------------------------" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -22,8 +30,8 @@ int main(int argc, char* argv[]) {
     std::string search_title = argv[1];
     // (Opcional: lógica para juntar múltiplos argumentos se não usar aspas)
 
-    const std::string secondary_index_path = "data/secondary_index.idx";
-    const std::string data_file_path = "data/data_file.dat";
+    const std::string secondary_index_path = "/data/secondary_index.idx";
+    const std::string data_file_path = "/data/data_file.dat";
 
     try {
         // 1. Calcula o hash do título de busca
