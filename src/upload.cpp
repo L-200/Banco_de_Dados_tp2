@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
     }
 
     // 3. Define o número de blocos para o arquivo de Hashing
-    long initial_blocks = 600000; //cabem 2 por bloco e existem aproximadamente 1021443 artigos - arredondado para o codigo não ser tão atrapalhado pelas colisões
+    long initial_blocks = 650000; //cabem 2 por bloco e existem aproximadamente 1021443 artigos - fator de carga ~80% para demonstrar a instabilidade do hashing, mas não ser tão lento 
 
     // 4. Bloco try...catch para lidar com erros durante a inicialização ou carga
     try {
