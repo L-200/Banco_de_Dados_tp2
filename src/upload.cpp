@@ -1,208 +1,186 @@
-// src/upload.cpp
+// src/upload.cpp — VERSÃO OTIMIZADA
 
-#include <iostream>       // Para std::cout, std::cerr, std::endl
-#include <fstream>        // Para std::ifstream
-#include <sstream>        // Para std::stringstream (usado no parser antigo, agora menos)
-#include <string>         // Para std::string, std::getline
-#include <vector>         // Para std::vector (usado no parser novo)
-#include <stdexcept>      // Para std::runtime_error
-#include <cstdlib>        // Para std::atoi, std::atol, std::strtoll, exit
-#include <cstring>        // Para std::strncpy
-#include <climits>        // Para INT_MAX, INT_MIN
-#include <functional>     // Para std::hash (usado no hash do título)
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <stdexcept>
+#include <cstdlib>
+#include <cstring>
+#include <climits>
+#include <functional>
+#include <string_view>
+#include <algorithm>
 
-// === Incluindo os headers do seu projeto ===
-#include "record.hpp"         // Define a struct Artigo
-#include "hashing.hpp"        // Define a classe HashingFile
-#include "BPlusTree.hpp"      // Define a classe BPlusTree (para int ID)
-#include "BPlusTree_long.hpp" // Define a classe BPlusTree_long (para long long hash do título)
-#include "upload.hpp"         // Se você tiver um upload.hpp com a declaração de parse_csv_line
+// === Headers do Projeto ===
+#include "record.hpp"
+#include "hashing.hpp"
+#include "BPlusTree.hpp"
+#include "BPlusTree_long.hpp"
+#include "upload.hpp"
 
-// === Função Auxiliar para Hash do Título ===
-// Converte uma string (título) em um número de 64 bits (long long)
-long long hash_string_to_long(const char* str) {
-    std::hash<std::string> hasher;
-    // static_cast garante que o resultado seja tratado como long long
-    return static_cast<long long>(hasher(str));
+// === Hash do Título com string_view (sem cópias) ===
+inline long long hash_string_to_long(const char* str) {
+    static std::hash<std::string_view> hasher;
+    return static_cast<long long>(hasher(std::string_view(str)));
 }
 
-// === Função Auxiliar para Analisar uma Linha do CSV ===
-// Versão robusta que lida com ';', aspas, espaços e verifica conversão do ID.
-bool parse_csv_line(const std::string& line, Artigo& artigo) {
+// === Parsing Rápido de CSV ===
+// Assume separador ';' e respeita aspas — sem realocação de strings
+bool parse_csv_line_fast(std::string& line, Artigo& artigo) {
     if (line.empty()) return false;
 
-    std::vector<std::string> fields;
-    std::string current_field;
+    const char* ptr = line.c_str();
+    const char* end = ptr + line.size();
+    const char* field_starts[7] = { ptr };
+    const char* field_ends[7] = { nullptr };
+
     bool in_quotes = false;
-    
-    // Loop manual para analisar a linha, respeitando aspas
-    for (size_t i = 0; i < line.length(); ++i) {
-        char c = line[i];
-        if (c == '"') {
-            if (in_quotes && i + 1 < line.length() && line[i+1] == '"') {
-                current_field += '"'; i++;
-            } else {
-                in_quotes = !in_quotes;
-            }
-        } else if (c == ';' && !in_quotes) {
-            fields.push_back(current_field);
-            current_field.clear();
-        } else {
-            current_field += c;
+    int field = 0;
+    for (const char* p = ptr; p < end && field < 7; ++p) {
+        if (*p == '"') {
+            if (p + 1 < end && p[1] == '"') ++p; // aspas duplas escapadas
+            else in_quotes = !in_quotes;
+        } else if (*p == ';' && !in_quotes) {
+            field_ends[field] = p;
+            if (++field < 7) field_starts[field] = p + 1;
         }
     }
-    fields.push_back(current_field); // Adiciona o último campo
+    if (field < 6) return false;
+    field_ends[6] = end;
 
-    if (fields.size() < 7) {
-        // std::cerr << "Linha ignorada (campos < 7): " << line << std::endl; // Opcional: Descomente para depurar
-        return false;
-    }
+    // Função auxiliar para limpar espaços
+    auto trim = [](std::string_view sv) {
+        size_t start = sv.find_first_not_of(" \t\n\r\f\v");
+        size_t end = sv.find_last_not_of(" \t\n\r\f\v");
+        if (start == std::string_view::npos) return std::string_view{};
+        return sv.substr(start, end - start + 1);
+    };
 
-    // Limpa espaços em branco no início/fim de cada campo
-    for (std::string& f : fields) {
-        f.erase(0, f.find_first_not_of(" \t\n\r\f\v"));
-        f.erase(f.find_last_not_of(" \t\n\r\f\v") + 1);
-    }
-    
-    // Tenta as conversões
     try {
-        // 1. ID (com verificação robusta)
-        char* end_ptr = nullptr;
-        long long temp_id = std::strtoll(fields[0].c_str(), &end_ptr, 10);
-        if (end_ptr == fields[0].c_str() || *end_ptr != '\0' || temp_id > INT_MAX || temp_id < INT_MIN) {
-             std::cerr << "ERRO DE CONVERSAO ID: '" << fields[0] << "' Linha: " << line << std::endl;
-             return false;
-        }
+        std::string_view id_str(field_starts[0], field_ends[0] - field_starts[0]);
+        id_str = trim(id_str);
+        char* endptr = nullptr;
+        long long temp_id = std::strtoll(std::string(id_str).c_str(), &endptr, 10);
+        if (endptr == id_str.data() || *endptr != '\0' || temp_id > INT_MAX || temp_id < INT_MIN)
+            return false;
         artigo.ID = static_cast<int>(temp_id);
 
-        // 2. Título (copia segura com strncpy)
-        std::strncpy(artigo.Titulo, fields[1].c_str(), 300);
-        artigo.Titulo[300] = '\0'; // Garante terminação nula
+        auto copy_field = [&](char* dest, size_t max_len, int idx) {
+            std::string_view sv = trim(std::string_view(field_starts[idx], field_ends[idx] - field_starts[idx]));
+            size_t len = std::min(max_len, sv.size());
+            std::memcpy(dest, sv.data(), len);
+            dest[len] = '\0';
+        };
 
-        // 3. Ano (atoi é suficiente aqui)
-        artigo.Ano = std::atoi(fields[2].c_str());
+        copy_field(artigo.Titulo, 300, 1);
+        artigo.Ano = std::atoi(std::string(field_starts[2], field_ends[2] - field_starts[2]).c_str());
+        copy_field(artigo.Autores, 150, 3);
+        artigo.Citacoes = std::atoi(std::string(field_starts[4], field_ends[4] - field_starts[4]).c_str());
+        artigo.Atualizacao_timestamp = std::atol(std::string(field_starts[5], field_ends[5] - field_starts[5]).c_str());
+        copy_field(artigo.Snippet, 1024, 6);
 
-        // 4. Autores (copia segura)
-        std::strncpy(artigo.Autores, fields[3].c_str(), 150);
-        artigo.Autores[150] = '\0';
-
-        // 5. Citações (atoi é suficiente)
-        artigo.Citacoes = std::atoi(fields[4].c_str());
-
-        // 6. Atualização (simplificado - usar atol)
-        // ATENÇÃO: Uma conversão real de data/hora seria mais complexa.
-        artigo.Atualizacao_timestamp = std::atol(fields[5].c_str());
-
-        // 7. Snippet (copia segura)
-        std::strncpy(artigo.Snippet, fields[6].c_str(), 1024);
-        artigo.Snippet[1024] = '\0';
-
-        return true; // Parsing bem-sucedido
-        
-    } catch (const std::exception& e) {
-        std::cerr << "ERRO DE EXCECAO NO PARSING: Linha: " << line << " Error: " << e.what() << std::endl;
-        return false;
+        return true;
     } catch (...) {
-        std::cerr << "ERRO DESCONHECIDO NO PARSING: Linha: " << line << std::endl;
         return false;
     }
 }
 
-
-// === Função Principal do Programa `upload` ===
+// === Função Principal ===
 int main(int argc, char* argv[]) {
-    // Opcional: Otimizações de I/O (remover se causar problemas)
     std::ios::sync_with_stdio(false);
     std::cin.tie(nullptr);
     std::cout.tie(nullptr);
 
-    // 1. Verifica se o caminho do CSV foi passado como argumento
     if (argc != 2) {
-        std::cerr << "Uso: " << argv[0] << " <caminho_para_o_arquivo_csv>" << std::endl;
-        std::cerr << "Exemplo dentro do Docker: ./bin/upload /data/artigo.csv" << std::endl;
-        return 1; // Termina com erro
+        std::cerr << "Uso: " << argv[0] << " <arquivo.csv>\n";
+        return 1;
     }
-    // **CORREÇÃO:** Declaração única de input_csv_path
-    const std::string input_csv_path = argv[1]; // Pega o caminho do CSV do argumento
 
-    std::cout << "--- INÍCIO DA CARGA DE DADOS ---" << std::endl;
-    std::cout << "Arquivo de entrada: " << input_csv_path << std::endl;
+    const std::string input_csv_path = argv[1];
+    std::cout << "--- INÍCIO DA CARGA DE DADOS ---\nArquivo: " << input_csv_path << "\n";
 
-    // 2. Tenta abrir o arquivo CSV
-    std::ifstream input_file(input_csv_path);
+    // Bufferização pesada do CSV (1 MB)
+    std::ifstream input_file(input_csv_path, std::ios::in | std::ios::binary);
     if (!input_file.is_open()) {
-        std::cerr << "ERRO: Não foi possível abrir o arquivo CSV: " << input_csv_path << std::endl;
-        return 1; // Termina com erro
+        std::cerr << "Erro: não foi possível abrir " << input_csv_path << "\n";
+        return 1;
     }
+    static char read_buffer[1 << 20];
+    input_file.rdbuf()->pubsetbuf(read_buffer, sizeof(read_buffer));
 
-    // 3. Define o número de blocos para o arquivo de Hashing
-    long initial_blocks = 650000; //cabem 2 por bloco e existem aproximadamente 1021443 artigos - fator de carga ~80% para demonstrar a instabilidade do hashing, mas não ser tão lento 
+    std::ofstream log_file("/data/upload_warnings.log", std::ios::app);
 
-    // 4. Bloco try...catch para lidar com erros durante a inicialização ou carga
+    long initial_blocks = 650000;
+
     try {
-        // --- Inicializa as Estruturas de Dados ---
         HashingFile data_file("/data/data_file.dat", initial_blocks);
         BPlusTree primary_index("/data/primary_index.idx");
         BPlusTree_long secondary_index("/data/secondary_index.idx");
-        std::cout << "Estruturas inicializadas." << std::endl;
+        std::cout << "Estruturas inicializadas.\n";
 
-        // --- Loop Principal MODIFICADO para Juntar Linhas Quebradas ---
-        std::string line_buffer;
-        std::string complete_record_line;
-        std::getline(input_file, line_buffer); // Pula cabeçalho
+        std::string line_buffer, complete_record_line;
+        std::getline(input_file, line_buffer); // pular cabeçalho
+
         int inserted_count = 0;
         long physical_line_number = 1;
 
+        // buffers de inserção em lote (reduz I/O)
+        std::vector<std::pair<int, f_ptr>> primary_batch;
+        std::vector<std::pair<long long, f_ptr>> secondary_batch;
+        primary_batch.reserve(1000);
+        secondary_batch.reserve(1000);
+
         while (std::getline(input_file, line_buffer)) {
             physical_line_number++;
-            if (complete_record_line.empty()) {
-                complete_record_line = line_buffer;
-            } else {
-                complete_record_line += "\n" + line_buffer;
-            }
+            if (complete_record_line.empty()) complete_record_line = line_buffer;
+            else complete_record_line += "\n" + line_buffer;
 
-             size_t quote_count = 0;
-             for(size_t i = 0; i < complete_record_line.length(); ++i) {
-                  if (complete_record_line[i] == '"') {
-                       if (i + 1 == complete_record_line.length() || complete_record_line[i+1] != '"') {
-                            quote_count++;
-                       } else { i++; }
-                  }
-             }
+            size_t quote_count = 0;
+            for (size_t i = 0; i < complete_record_line.size(); ++i)
+                if (complete_record_line[i] == '"' && (i + 1 == complete_record_line.size() || complete_record_line[i + 1] != '"'))
+                    quote_count++;
 
             if (quote_count % 2 == 0) {
                 Artigo new_artigo;
-                if (parse_csv_line(complete_record_line, new_artigo)) {
+                if (parse_csv_line_fast(complete_record_line, new_artigo)) {
                     f_ptr data_ptr = data_file.insert(new_artigo);
                     if (data_ptr != -1) {
-                        primary_index.insert(new_artigo.ID, data_ptr);
                         long long titulo_hash = hash_string_to_long(new_artigo.Titulo);
-                        secondary_index.insert(titulo_hash, data_ptr);
+                        primary_batch.emplace_back(new_artigo.ID, data_ptr);
+                        secondary_batch.emplace_back(titulo_hash, data_ptr);
                         inserted_count++;
-                    } else {
-                        std::cerr << "AVISO: Falha ao inserir artigo (arquivo de dados cheio?). ID: " << new_artigo.ID << std::endl;
                     }
                 } else {
-                     std::cerr << "AVISO: Registro ignorado devido a erro de parsing (iniciado na linha fisica aprox. " << physical_line_number << "). Conteudo: " << complete_record_line.substr(0, 100) << "..." << std::endl;
+                    log_file << "Linha ignorada (~" << physical_line_number
+                             << "): " << complete_record_line.substr(0, 80) << "...\n";
                 }
-                complete_record_line = "";
+                complete_record_line.clear();
+
+                // Flush em lote
+                if (primary_batch.size() >= 1000) {
+                    for (auto& [id, ptr] : primary_batch) primary_index.insert(id, ptr);
+                    for (auto& [hash, ptr] : secondary_batch) secondary_index.insert(hash, ptr);
+                    primary_batch.clear();
+                    secondary_batch.clear();
+                }
             }
         }
 
+        // flush final
+        for (auto& [id, ptr] : primary_batch) primary_index.insert(id, ptr);
+        for (auto& [hash, ptr] : secondary_batch) secondary_index.insert(hash, ptr);
+
         input_file.close();
+        log_file.close();
 
-        std::cout << "--- CARGA DE DADOS CONCLUÍDA ---" << std::endl;
-        std::cout << "Total de linhas fisicas lidas (sem cabeçalho): " << physical_line_number - 1 << std::endl;
-        std::cout << "Total de artigos inseridos com sucesso: " << inserted_count << std::endl;
+        std::cout << "--- CARGA CONCLUÍDA ---\n";
+        std::cout << "Linhas lidas: " << physical_line_number - 1 << "\n";
+        std::cout << "Artigos inseridos: " << inserted_count << "\n";
 
-    // **CORREÇÃO:** Blocos catch preenchidos
-    } catch (const std::runtime_error& e) {
-        std::cerr << "ERRO FATAL DURANTE A CARGA: " << e.what() << std::endl;
-        if(input_file.is_open()) input_file.close();
-        return 1;
-    } catch (...) {
-        std::cerr << "ERRO FATAL DESCONHECIDO DURANTE A CARGA." << std::endl;
-         if(input_file.is_open()) input_file.close();
+    } catch (const std::exception& e) {
+        std::cerr << "Erro fatal: " << e.what() << "\n";
         return 1;
     }
 

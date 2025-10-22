@@ -5,49 +5,113 @@
 
 //abrir o arquivo e incializar caso seja um arquivo novo
 BPlusTree_long::BPlusTree_long(const std::string& index_file_path) {
-    index_file.open(index_file_path, std::ios::in | std::ios::out | std::ios::binary); //abre no modo binario para leitura e escrita
+    index_file.open(index_file_path, std::ios::in | std::ios::out | std::ios::binary);
 
-    //se não existir o arquivo, cria e inicializa a arvore
-    
     if(!index_file.is_open()) {
-        // cria o arquivo
+        // arquivo novo
+        std::cout << "CONSTRUTOR DA ARVORE B+ (LONG): Arquivo não existe. Criando..." << std::endl;
         std::ofstream create(index_file_path, std::ios::binary);
-        if(!create.is_open()) {
-            throw std::runtime_error("ERRO: Não foi possível criar o arquivo de índice");
-        }
+        if(!create) { throw std::runtime_error("ERRO: Não foi possível criar o arquivo de índice"); }
         create.close();
-        // reabre em modo leitura/escrita binário
         index_file.open(index_file_path, std::ios::in | std::ios::out | std::ios::binary);
-        if(!index_file.is_open())
-            throw std::runtime_error("ERRO: Não foi possível abrir o arquivo de índice após criar");
+        if(!index_file) { throw std::runtime_error("ERRO: Não foi possível abrir o arquivo de índice após criar"); }
 
-        //inicializando a arvore
-        BPlusTree_long_Node node_raiz;
-        node_raiz.is_leaf = true;
-        root_ptr = allocate_new_block();
-        write_block(root_ptr, node_raiz);
-    } else {
-        //se arquivo já existe, calcula o numero de blocos e assume que raiz está no bloco 0
-        index_file.seekg(0, std::ios::end);
-        long file_size = index_file.tellg(); //tellg fala a posição em que o cursor está
+        // inicializa metadados
+        BPlusTree_long_Metadata metadata;
+        metadata.root_ptr_offset = DATA_START_OFFSET_LONG; // raiz começa após metadados
+        metadata.block_count = 1;
 
-        if (file_size == 0) { //arquivo existe mas arvore ainda não foi inicializada
-            BPlusTree_long_Node node_raiz;
-            node_raiz.is_leaf = true;
-            root_ptr = allocate_new_block();
-            write_block(root_ptr, node_raiz);
-        } else { //arvoore existe e está no inicio do arquivo
-            root_ptr = 0;
-            block_count = file_size / sizeof(BPlusTree_long_Node);
+        // escreve metadados no início do arquivo
+        index_file.seekp(0);
+        if (!index_file.write(reinterpret_cast<const char*>(&metadata), sizeof(BPlusTree_long_Metadata))) {
+            throw std::runtime_error("ERRO: Falha ao escrever metadados iniciais.");
         }
-    } 
+
+        // inicializa variáveis 
+        root_ptr = metadata.root_ptr_offset;
+        block_count = metadata.block_count;
+
+        // cria e escreve o nó raiz inicial
+        BPlusTree_long_Node root_node;
+        root_node.is_leaf = true;
+        write_block(root_ptr, root_node); // escreve o primeiro nó no DATA_START_OFFSET_LONG
+
+        std::cout << "CONSTRUTOR DA ARVORE B+ (LONG): Arquivo criado e inicializado. root_ptr=" << root_ptr << ", block_count=" << block_count << std::endl;
+
+    } else {
+        // arquivo existente
+        std::cout << "CONSTRUTOR DA ARVORE B+ (LONG): Arquivo existente aberto." << std::endl;
+
+        // verifica tamanho mínimo para conter metadados
+        index_file.seekg(0, std::ios::end);
+        long file_size = index_file.tellg();
+
+        if (file_size < sizeof(BPlusTree_long_Metadata)) {
+            // arquivo existe mas é muito pequeno, deve ser tratado como novo
+            std::cout << "CONSTRUTOR DA ARVORE B+ (LONG): Arquivo existente muito pequeno. Re-inicializando..." << std::endl;
+            index_file.close(); // fecha para reabrir e truncar
+            index_file.open(index_file_path, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+            if(!index_file) { throw std::runtime_error("ERRO: Não foi possível reabrir/truncar arquivo pequeno."); }
+
+            BPlusTree_long_Metadata metadata;
+            metadata.root_ptr_offset = DATA_START_OFFSET_LONG;
+            metadata.block_count = 1;
+            index_file.seekp(0);
+            if (!index_file.write(reinterpret_cast<const char*>(&metadata), sizeof(BPlusTree_long_Metadata))) {
+                throw std::runtime_error("ERRO: Falha ao escrever metadados iniciais (re-init).");
+             }
+            root_ptr = metadata.root_ptr_offset;
+            block_count = metadata.block_count;
+            BPlusTree_long_Node root_node;
+            root_node.is_leaf = true;
+            write_block(root_ptr, root_node);
+
+        } else {
+            // arquivo tem tamanho suficiente, lê metadados
+            BPlusTree_long_Metadata metadata;
+            index_file.seekg(0);
+            if (!index_file.read(reinterpret_cast<char*>(&metadata), sizeof(BPlusTree_long_Metadata))) {
+                throw std::runtime_error("ERRO: Falha ao ler metadados do arquivo existente.");
+            }
+
+            // inicializa variáveis membro com valores lidos
+            root_ptr = metadata.root_ptr_offset;
+            block_count = metadata.block_count;
+
+             // validação básica
+            if (root_ptr < DATA_START_OFFSET_LONG || block_count == 0 || ((unsigned long)(root_ptr + sizeof(BPlusTree_long_Node)) > (unsigned long)file_size && block_count > 0)) {
+                std::cerr << "AVISO: Metadados lidos parecem invalidos! root_ptr=" << root_ptr << ", block_count=" << block_count << ", file_size=" << file_size << std::endl;
+            }
+        }
+    }
+    // Verificação final do estado do arquivo
+    if (!index_file.good()) {
+        std::cerr << "ERRO FATAL no Construtor BPlusTree_long: Estado do arquivo invalido apos inicializacao!" << std::endl;
+        throw std::runtime_error("Estado invalido do fstream no construtor.");
+    }
+    std::cout<< "CONSTRUTOR DA ARVORE B+ (LONG): Arvore criada com sucesso!";
 }
 
-//fecha o arquivo
 BPlusTree_long::~BPlusTree_long() {
     if(index_file.is_open()) {
-        flush_cache();
+        flush_cache(); // descarrega nós modificados para o disco
+
+        // salvando metadados atualizados
+        BPlusTree_long_Metadata metadata;
+        metadata.root_ptr_offset = root_ptr; // usa o valor atual da variável
+        metadata.block_count = block_count; // usa o valor atual da variável
+
+        index_file.seekp(0); // vai para o início do arquivo
+        if (!index_file.write(reinterpret_cast<const char*>(&metadata), sizeof(BPlusTree_long_Metadata))) {
+            std::cerr << "ERRO FATAL: Falha ao salvar metadados no destrutor!" << std::endl;
+
+        } else {
+            index_file.flush(); // garante que os metadados sejam escritos
+             std::cout << "DESTRUTOR DA AROVRE B+ (LONG): Metadados salvos." << std::endl;
+        }
+
         index_file.close();
+        std::cout << "DESTRUTOR DA AROVRE B+ (LONG): Arquivo de indice fechado." << std::endl;
     }
 }
 
@@ -261,62 +325,93 @@ void BPlusTree_long::split_internal(BPlusTree_long_Node& node, long long& promot
 
 
 BPlusTree_long_Node BPlusTree_long::read_block(f_ptr block_ptr) {
-    // Tenta achar no cache
-    auto it = node_cache.find(block_ptr);
-    if (it != node_cache.end()) {
-        return it->second;
-    }
+     // validação básica do ponteiro
+     if (block_ptr < DATA_START_OFFSET_LONG || block_ptr % sizeof(BPlusTree_long_Node) != (DATA_START_OFFSET_LONG % sizeof(BPlusTree_long_Node))) {
+          std::cerr << "ERRO FATAL: Tentativa de ler bloco em offset invalido: " << block_ptr << std::endl;
+          throw std::runtime_error("Offset de leitura invalido.");
+     }
 
-    // Se não estiver, lê do disco
+    auto it = node_cache.find(block_ptr);
+    if (it != node_cache.end()) { return it->second; }
+
     BPlusTree_long_Node node;
     index_file.seekg(block_ptr);
-    index_file.read(reinterpret_cast<char*>(&node), sizeof(BPlusTree_long_Node));
+    if (!index_file.read(reinterpret_cast<char*>(&node), sizeof(BPlusTree_long_Node))) {
+        std::cerr << "ERRO FATAL: Falha ao ler o bloco " << block_ptr << " do disco!" << std::endl;
+        throw std::runtime_error("Falha na leitura do bloco do indice.");
+    }
 
-    //  Armazena no cache
+    if (node_cache.size() >= MAX_CACHE_SIZE) { flush_cache(); }
     node_cache[block_ptr] = node;
     return node;
 }
 
 void BPlusTree_long::flush_cache() {
+    if (!index_file.is_open() || !index_file.good()) {return; }
     for (const auto& pair : node_cache) {
         f_ptr block_ptr = pair.first;
         const BPlusTree_long_Node& node = pair.second;
-
         index_file.seekp(block_ptr);
-        index_file.write(reinterpret_cast<const char*>(&node), sizeof(BPlusTree_long_Node));
+        if (!index_file.write(reinterpret_cast<const char*>(&node), sizeof(BPlusTree_long_Node))) {
+            std::string error_msg = "ERRO FATAL: Falha ao escrever o bloco " + std::to_string(block_ptr) + " durante o flush_cache!";
+            throw std::runtime_error(error_msg);
+        }
     }
-
     index_file.flush();
     node_cache.clear();
 }
 
 void BPlusTree_long::write_block(f_ptr block_ptr, const BPlusTree_long_Node& node) {
-    // Atualiza o cache
+     // validação básica do ponteiro
+     if (block_ptr < DATA_START_OFFSET_LONG || block_ptr % sizeof(BPlusTree_long_Node) != (DATA_START_OFFSET_LONG % sizeof(BPlusTree_long_Node))) {
+          std::cerr << "ERRO FATAL: Tentativa de escrever bloco em offset invalido: " << block_ptr << std::endl;
+          throw std::runtime_error("Offset de escrita invalido.");
+     }
+
     node_cache[block_ptr] = node;
-
-    // Se o cache estiver muito cheio, descarrega pro disco
-    if (node_cache.size() > MAX_CACHE_SIZE) {
-        flush_cache();
-    }
-
+    if (node_cache.size() > MAX_CACHE_SIZE) { flush_cache(); }
 }
 
 f_ptr BPlusTree_long::allocate_new_block() {
-    // move o ponteiro para o final do arquivo
+    // Flush garante que o tamanho do arquivo esteja atualizado antes de 'tellp'
+    // chamar flush_cache aqui pode ser excessivo, index_file.flush() é suficiente
+    index_file.flush(); // garante que escritas anteriores sejam feitas
+
     index_file.seekp(0, std::ios::end);
-    f_ptr new_block_ptr = index_file.tellp();
-    
-    // escreve um nó vazio DIRETAMENTE NO DISCO para alocar o espaço
-    BPlusTree_long_Node empty_node{};
-    index_file.write(reinterpret_cast<const char*>(&empty_node), sizeof(BPlusTree_long_Node));
+    f_ptr current_end = index_file.tellp(); // onde o arquivo termina ATUALMENTE
 
-    // Adiciona verificação de erro
-    if (index_file.fail()) {
-        throw std::runtime_error("ERRO FATAL: Falha ao alocar/escrever novo bloco no disco.");
+    // calculando onde o NOVO bloco DEVE começar
+    f_ptr new_block_ptr;
+    if (block_count == 0) { // situação de inicialização, embora o construtor deva cuidar disso
+         new_block_ptr = DATA_START_OFFSET_LONG;
+    } else {
+
+        // o novo bloco começa no final atual, mas garantimos que está alinhado
+        new_block_ptr = DATA_START_OFFSET_LONG + block_count * sizeof(BPlusTree_long_Node);
+        // se o cálculo acima for diferente do final real, pode indicar corrupção
+         if (new_block_ptr < current_end) {
+            std::cerr << "AVISO: allocate_new_block detectou tamanho de arquivo inesperado. current_end=" << current_end << ", new_block_ptr_calc=" << new_block_ptr << std::endl;
+             new_block_ptr = current_end;
+             // realinhar se necessário (garante que não escrevamos em um offset "quebrado")
+            if ((new_block_ptr - DATA_START_OFFSET_LONG) % sizeof(BPlusTree_long_Node) != 0) {
+                new_block_ptr = DATA_START_OFFSET_LONG + ((new_block_ptr - DATA_START_OFFSET_LONG + sizeof(BPlusTree_long_Node) - 1) / sizeof(BPlusTree_long_Node)) * sizeof(BPlusTree_long_Node);
+            }
+         }
     }
-    
-    // A chamada 'write_block(new_block_ptr, empty_node);' foi removida daqui
 
-    block_count++;
+
+    BPlusTree_long_Node empty_node;
+    // escreve DIRETAMENTE no disco para estender o arquivo
+    index_file.seekp(new_block_ptr);
+    if (!index_file.write(reinterpret_cast<const char*>(&empty_node), sizeof(BPlusTree_long_Node))) {
+         std::cerr << "ERRO FATAL: Falha ao alocar novo bloco " << new_block_ptr << " no disco!" << std::endl;
+         throw std::runtime_error("Falha ao estender o arquivo de indice.");
+    }
+    index_file.flush(); // garante que a escrita foi feita
+
+    // adiciona o nó vazio ao cache
+    node_cache[new_block_ptr] = empty_node;
+
+    block_count++; // incrementa o contador APÓS alocar com sucesso
     return new_block_ptr;
 }

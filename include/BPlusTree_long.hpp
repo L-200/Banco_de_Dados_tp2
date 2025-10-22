@@ -14,6 +14,15 @@ const int ORDER_LONG = 255;
 // long para representar os ponteiros para outros blocos no arquivo
 using f_ptr = long; //-1 para nulo
 
+// layout dos metadados PERMANENTES do arquivo
+struct BPlusTree_long_Metadata {
+    f_ptr root_ptr_offset; // Offset do nó raiz atual
+    long block_count;      // Número total de blocos
+};
+
+// constante que define onde os blocos de nós começam
+const f_ptr DATA_START_OFFSET_LONG = sizeof(BPlusTree_long_Metadata);
+
 // layout de um unico nó da B+ tree
 struct BPlusTree_long_Node {
     bool is_leaf;                 //flag para indicar se o nó é uma folha
@@ -51,7 +60,7 @@ public:
 private:
 
     std::unordered_map<f_ptr, BPlusTree_long_Node> node_cache; //estabelecendo o cache
-    static const int MAX_CACHE_SIZE = 128;
+    static const int MAX_CACHE_SIZE = 5000;
 
     std::fstream index_file;    // gerencia conexão para ler e escrever no arquivo de índice
     f_ptr root_ptr;             // ponteiro para o nó raiz no arquivo
