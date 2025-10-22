@@ -9,7 +9,7 @@ BPlusTree::BPlusTree(const std::string& index_file_path) {
 
     if(!index_file.is_open()) {
         // arquivo novo
-        std::cout << "CONSTRUTOR DA ARVORE B+ (INT): Arquivo nao existe. Criando..." << std::endl;
+        std::cout << "CONSTRUTOR DA ARVORE B+ (INT): Arquivo não existe. Criando..." << std::endl;
         std::ofstream create(index_file_path, std::ios::binary);
         if(!create) { throw std::runtime_error("ERRO: Não foi possível criar o arquivo de índice"); }
         create.close();
