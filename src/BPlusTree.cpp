@@ -89,7 +89,7 @@ BPlusTree::BPlusTree(const std::string& index_file_path) {
         std::cerr << "ERRO FATAL no Construtor BPlusTree: Estado do arquivo invalido apos inicializacao!" << std::endl;
         throw std::runtime_error("Estado invalido do fstream no construtor.");
     }
-    std::cout<< "CONSTRUTOR DA ARVORE B+ (INT): Arvore criada com sucesso!";
+    std::cout<< "CONSTRUTOR DA ARVORE B+ (INT): Arvore criada com sucesso!"<<std::endl;
 }
 
 BPlusTree::~BPlusTree() {
