@@ -1,78 +1,152 @@
-#include <iostream>
-#include <string>
-#include <stdexcept>
-#include <fstream>
-#include <functional> // Para std::hash
+#include <iostream>       // Para std::cout, std::cerr, std::endl
+#include <fstream>        // Para std::ifstream
+#include <sstream>        // Para std::ostringstream (reconstruir título)
+#include <string>         // Para std::string
+#include <vector>         // (Não diretamente necessário, mas bom ter)
+#include <stdexcept>      // Para std::runtime_error
+#include <cstdlib>        // (Não diretamente necessário aqui)
+#include <cstring>        // Para std::strncpy, std::strcmp, strnlen
+#include <functional>     // Para std::hash
 
-#include "record.hpp"
-#include "BPlusTree.hpp" // Usa a BPlusTree de inteiros
-#include "seek2.hpp"
+// === Headers do projeto ===
+#include "record.hpp"         // Define a struct Artigo
+#include "BPlusTree_long.hpp" // Define a classe BPlusTree_long (para índice secundário)
 
-// Função auxiliar para imprimir o artigo
-void print_artigo(const Artigo& artigo) {
-    // ... (mesma função dos outros programas)
+// === Função auxiliar para hashing do título ===
+// IMPORTANTE: Esta função DEVE ser idêntica à usada em upload.cpp
+long long hash_string_to_long(const char* str) {
+    std::hash<std::string> hasher;
+    return static_cast<long long>(hasher(str));
 }
 
+// === Função auxiliar para imprimir artigo ===
+void print_artigo(const Artigo& artigo) {
+    std::cout << "------------------------------------------" << std::endl;
+    std::cout << "ID: " << artigo.ID << std::endl;
+    std::cout << "Titulo: ";
+    // Imprime com segurança até 300 caracteres ou até o \0
+    std::cout.write(artigo.Titulo, strnlen(artigo.Titulo, 300));
+    std::cout << std::endl;
+    std::cout << "Ano: " << artigo.Ano << std::endl;
+    std::cout << "Autores: ";
+    std::cout.write(artigo.Autores, strnlen(artigo.Autores, 150));
+    std::cout << std::endl;
+    std::cout << "Citacoes: " << artigo.Citacoes << std::endl;
+    std::cout << "Atualizacao: " << artigo.Atualizacao_timestamp << std::endl; // Assumindo timestamp
+    std::cout << "Snippet: ";
+    // Imprime com segurança, tratando caracteres não imprimíveis se necessário
+    std::cout.write(artigo.Snippet, strnlen(artigo.Snippet, 1024));
+    std::cout << std::endl;
+    std::cout << "------------------------------------------" << std::endl;
+}
+
+// === Função principal do programa seek2 ===
 int main(int argc, char* argv[]) {
+    // Verificando se pelo menos um argumento (parte do título) foi passado
     if (argc < 2) {
-        std::cerr << "Uso: " << argv[0] << " <Título do artigo>" << std::endl;
-        std::cerr << "Dica: Se o título contiver espaços, coloque-o entre aspas." << std::endl;
+        std::cerr << "Uso: " << argv[0] << " <Titulo_do_artigo>" << std::endl;
+        std::cerr << "Dica: Se o titulo contiver espacos, nao precisa de aspas." << std::endl;
         return 1;
     }
 
-    std::string search_title = argv[1];
-    // (Opcional: lógica para juntar múltiplos argumentos se não usar aspas)
+    // Reconstruindo o título completo a partir de todos os argumentos
+    std::ostringstream oss;
+    for (int i = 1; i < argc; ++i) {
+        if (i > 1) oss << " "; // Adiciona espaço entre os argumentos
+        oss << argv[i];
+    }
+    std::string search_titulo_completo = oss.str();
 
-    const std::string secondary_index_path = "data/secondary_index.idx";
-    const std::string data_file_path = "data/data_file.dat";
+    // Truncando o título de busca
+    char truncated_search_titulo[301]; // Buffer para o título truncado (igual ao struct Artigo)
+    std::strncpy(truncated_search_titulo, search_titulo_completo.c_str(), 300);
+    truncated_search_titulo[300] = '\0'; // Garante terminação nula
+
+    // Definindo os caminhos absolutos para os arquivos de dados e índice
+    const std::string secondary_index_path = "/data/secondary_index.idx";
+    const std::string data_file_path = "/data/data_file.dat";
+
+    std::cout << "Buscando pelo Titulo (truncado para 300 caracteres): \"" << truncated_search_titulo << "\"" << std::endl;
 
     try {
-        // Calcula o hash do título de busca
-        std::hash<std::string> title_hasher;
-        int search_hash = static_cast<int>(title_hasher(search_title));
+        // Calculando o hash DO TÍTULO TRUNCADO
+        long long search_hash = hash_string_to_long(truncated_search_titulo);
+        std::cout << "Hash gerado: " << search_hash << std::endl << std::endl;
 
-        // Inicializa e busca no índice secundário usando o HASH
-        BPlusTree secondary_index(secondary_index_path);
+        // Inicializando a B+Tree secundária (deve abrir o arquivo existente)
+        BPlusTree_long secondary_index(secondary_index_path);
         int blocks_read_index = 0;
 
-        std::cout << "Buscando pelo título: \"" << search_title << "\" (Hash: " << search_hash << ")" << std::endl;
+        //Buscando o HASH na árvore B+
         f_ptr data_ptr = secondary_index.search(search_hash, blocks_read_index);
 
-        bool truly_found = false;
-        if (data_ptr != -1) {
-            // Passo de verificação
-            // Encontramos um registro com o hash correspondente. Agora, precisamos
-            // verificar se é o artigo certo ou uma colisão.
-            std::ifstream data_file(data_file_path, std::ios::binary);
-            data_file.seekg(data_ptr);
-            Artigo found_artigo;
-            data_file.read(reinterpret_cast<char*>(&found_artigo), sizeof(Artigo));
+        bool record_found_and_verified = false; // Flag para rastrear sucesso final
 
-            if (search_title == found_artigo.Titulo) {
-                // Títulos correspondem! É o registro correto.
-                truly_found = true;
-                std::cout << "\nRegistro encontrado com sucesso!" << std::endl;
+        // Se o hash foi encontrado no índice
+        if (data_ptr != -1) {
+            std::cout << "Hash encontrado no indice! Ponteiro para dados: " << data_ptr << std::endl;
+            std::cout << "Lendo registro do arquivo de dados para verificacao..." << std::endl;
+
+            // abre o arquivo de dados principal para ler o registro completo
+            std::ifstream data_file(data_file_path, std::ios::binary);
+            if (!data_file) {
+                 throw std::runtime_error("ERRO FATAL: Nao foi possivel abrir o arquivo de dados '" + data_file_path + "'");
+            }
+
+            // Posiciona no local indicado pelo índice
+            data_file.seekg(data_ptr);
+            if (!data_file) {
+                 data_file.close();
+                 throw std::runtime_error("ERRO FATAL: Falha ao posicionar no arquivo de dados no offset " + std::to_string(data_ptr));
+            }
+
+            Artigo found_artigo; // Cria struct para receber os dados
+            // Lê o registro completo do arquivo de dados
+            if (!data_file.read(reinterpret_cast<char*>(&found_artigo), sizeof(Artigo))) {
+                 data_file.close();
+                 throw std::runtime_error("ERRO FATAL: Falha ao ler o registro do arquivo de dados no offset " + std::to_string(data_ptr));
+            }
+            data_file.close();
+
+            // --- VERIFICAÇÃO FINAL (Contra Colisões de Hash) ---
+            // Compara o título BUSCADO (truncado) com o título LIDO DO ARQUIVO (já truncado na struct)
+            if (strcmp(found_artigo.Titulo, truncated_search_titulo) == 0) {
+                // Os títulos (truncados) coincidem! Encontramos o registro correto
+                record_found_and_verified = true;
+                std::cout << "\nRegistro encontrado com sucesso (titulo verificado)!" << std::endl;
                 print_artigo(found_artigo);
             } else {
-                // Hash correspondeu, mas o título não, então foi uma colisão.
-                // Com a B+ Tree atual, não podemos encontrar o original.
-                std::cout << "\nOcorreu uma colisao de hash. O registro encontrado não corresponde ao título buscado." << std::endl;
+                // Hash coincidiu, mas os títulos não. É uma colisão de hash (muito rara em hash de long long)
+                 std::cout << "\nAVISO: Colisao de hash detectada ou erro de dados." << std::endl;
+                 std::cout << "  Hash encontrado, mas o titulo no registro nao corresponde ao buscado." << std::endl;
+                 std::cout << "  Titulo Buscado (truncado): " << truncated_search_titulo << std::endl;
+                 std::cout << "  Titulo no Registro Lido: "; std::cout.write(found_artigo.Titulo, strnlen(found_artigo.Titulo, 300)); std::cout << std::endl;
             }
-        }
-        
-        if (!truly_found) {
-            std::cout << "\nRegistro com o título \"" << search_title << "\" não foi encontrado." << std::endl;
+
         }
 
-        // Exibe as métricas
-        std::cout << "\n--- Métricas da busca no índice secundário ---" << std::endl;
-        std::cout << "Blocos lidos no arquivo de índice: " << blocks_read_index << std::endl;
-        std::cout << "Total de blocos no arquivo de índice secundário: " << secondary_index.get_total_blocks() << std::endl;
+        // Se o hash não foi encontrado OU se foi colisão...
+        if (!record_found_and_verified) {
+             std::cout << "\nRegistro com o titulo (truncado) \"" << truncated_search_titulo << "\" nao foi encontrado." << std::endl;
+        }
+
+        // Exibe as métricas de busca no índice secundário
+        std::cout << "\n--- Metricas da Busca no Indice Secundario ---" << std::endl;
+        std::cout << "Blocos lidos no arquivo de indice: " << blocks_read_index << std::endl;
+        try {
+             std::cout << "Total de blocos no arquivo de indice secundario: " << secondary_index.get_total_blocks() << std::endl;
+        } catch (...) {
+             std::cerr << "AVISO: Nao foi possivel obter o total de blocos do indice secundario." << std::endl;
+        }
+
 
     } catch (const std::runtime_error& e) {
-        std::cerr << "ERRO FATAL: " << e.what() << std::endl;
+        std::cerr << "ERRO FATAL durante a busca: " << e.what() << std::endl;
+        return 1;
+    } catch (...) {
+         std::cerr << "ERRO FATAL desconhecido durante a busca." << std::endl;
         return 1;
     }
 
-    return 0;
+    return 0; // Terminado com sucesso
 }
