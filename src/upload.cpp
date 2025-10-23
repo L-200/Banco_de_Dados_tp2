@@ -18,15 +18,13 @@
 #include "upload.hpp"
 
 
-// === Função Auxiliar Simples para Trim ===
 // Remove espaços em branco do início e fim da string (modifica in-place)
 void trim(std::string& s) {
     s.erase(0, s.find_first_not_of(" \t\n\r\f\v"));
     s.erase(s.find_last_not_of(" \t\n\r\f\v") + 1);
 }
 
-
-// === Função de Parsing Otimizada ===
+// Tira os espaços extras do CSV
 bool parse_csv_line(const std::string& line, Artigo& artigo) {
     if (line.empty()) return false;
 
@@ -60,11 +58,10 @@ bool parse_csv_line(const std::string& line, Artigo& artigo) {
                 // Verifica se é aspa dupla ("") para escape
                 if (i + 1 < line.length() && line[i + 1] == '"') {
                     current_field += '"'; // Adiciona uma única aspa
-                    i++; // Pula a próxima aspa
+                    i++; 
                 } else {
                     // Aspa final do campo
                     in_quotes = false;
-                    // Não adiciona a aspa final ao campo
                 }
             } else {
                 current_field += c; // Caractere normal dentro das aspas
@@ -73,8 +70,6 @@ bool parse_csv_line(const std::string& line, Artigo& artigo) {
     }
 
     // Adiciona o último campo após o loop
-    // Se o último campo estava entre aspas, ele já foi tratado
-    // Se não estava, precisa de trim
     if (!field_was_quoted) {
         trim(current_field);
     }
@@ -82,11 +77,11 @@ bool parse_csv_line(const std::string& line, Artigo& artigo) {
 
     // Verificação do número de campos
     if (fields.size() < 7) {
-        // std::cerr << "Linha ignorada (campos < 7): " << line << std::endl;
+        std::cerr << "Linha ignorada (campos < 7): " << line << std::endl;
         return false;
     }
 
-    // Tenta as conversões (mantendo a verificação robusta do ID)
+    // Tenta as conversões
     try {
         // 1. ID
         char* end_ptr = nullptr;
@@ -100,7 +95,12 @@ bool parse_csv_line(const std::string& line, Artigo& artigo) {
         // 2. Título
         std::strncpy(artigo.Titulo, fields[1].c_str(), 300);
         artigo.Titulo[300] = '\0';
-
+        // Rejeita títulos vazios
+        if (artigo.Titulo[0] == '\0') {
+            std::cerr << "Aviso: Título vazio encontrado, artigo ignorado.\n";
+            return false;
+        }
+        
         // 3. Ano
         artigo.Ano = std::atoi(fields[2].c_str());
 
@@ -131,10 +131,12 @@ bool parse_csv_line(const std::string& line, Artigo& artigo) {
 
 
 int main(int argc, char* argv[]) {
-   
     const std::string input_csv_path = argv[1];
     std::ifstream input_file(input_csv_path);
-    if (!input_file.is_open()) { /* ... erro ... */ }
+    if (!input_file.is_open()) {
+        std::cerr << "Erro ao abrir o arquivo CSV.\n";
+        return 1;
+    }
 
     long initial_blocks = 750000;
 
@@ -158,24 +160,36 @@ int main(int argc, char* argv[]) {
                 complete_record_line += "\n" + line_buffer;
             }
 
-             size_t quote_count = 0;
-             for(size_t i = 0; i < complete_record_line.length(); ++i) {
-                  if (complete_record_line[i] == '"') {
-                       if (i + 1 == complete_record_line.length() || complete_record_line[i+1] != '"') {
-                            quote_count++;
-                       } else { i++; }
-                  }
-             }
+            size_t quote_count = 0;
+            for (size_t i = 0; i < complete_record_line.length(); ++i) {
+                if (complete_record_line[i] == '"') {
+                    if (i + 1 == complete_record_line.length() || complete_record_line[i+1] != '"') {
+                        quote_count++;
+                    } else { i++; }
+                }
+            }
 
             if (quote_count % 2 == 0) {
                 Artigo artigo; 
-                // Chama a NOVA função de parsing
+                // Chama a função de parsing
                 if (parse_csv_line(complete_record_line, artigo)) {
+                    // Rejeita títulos vazios
+                    if (artigo.Titulo[0] == '\0') {
+                        std::cerr << "Aviso: Título vazio encontrado, artigo ignorado.\n";
+                        continue; // Pula para a próxima linha
+                    }
+
+                    // Validação do Ano
+                    if (artigo.Ano < 1000 || artigo.Ano > 9999) {
+                        std::cerr << "Aviso: Ano inválido para o artigo com ID: " << artigo.ID << "\n";
+                        continue; 
+                    }
+
                     f_ptr data_ptr = data_file.insert(artigo);
                     if (data_ptr != -1) {
                         if (inserted_count % 5000 == 0) {
-                            std::cout<< "Inserindo item numero :"<< inserted_count << "\n";
-                        } 
+                            std::cout << "Carregando dados... " << inserted_count << " artigos processados até agora.\n";
+                        }
                         primary_index.insert(artigo.ID, data_ptr);
                         long long titulo_hash = BPlusTree_long::hash_string_to_long(artigo.Titulo);
                         secondary_index.insert(titulo_hash, data_ptr);
@@ -184,8 +198,8 @@ int main(int argc, char* argv[]) {
                         std::cerr << "AVISO: Falha ao inserir artigo. ID: " << artigo.ID << "\n";
                     }
                 } else {
-                    std::cerr << "AVISO: Linha ignorada (~" << physical_line_number
-                              << "): " << complete_record_line.substr(0,100) << "...\n";
+                    std::cerr << "Aviso: A linha " << physical_line_number << " foi ignorada. Título vazio ou inválido: " 
+                    << complete_record_line.substr(0,100) << "...\n";
                 }
                 complete_record_line.clear();
             }
