@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
     std::ifstream input_file(input_csv_path);
     if (!input_file.is_open()) { /* ... erro ... */ }
 
-    long initial_blocks = 850000; // Valor ajustado para teste
+    long initial_blocks = 750000; // Valor ajustado para teste
 
     try {
         HashingFile data_file("/data/data_file.dat", initial_blocks);

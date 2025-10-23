@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
     // ---------------------
 
     // O número total de blocos DEVE ser idêntico ao usado no upload
-    long total_blocks = 775000;
+    long total_blocks = 750000;
 
     std::cout << "Buscando pelo ID: " << search_id << std::endl;
 

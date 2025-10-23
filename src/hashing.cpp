@@ -146,9 +146,11 @@ void HashingFile::flush_cache() {
 }
 
 void HashingFile::write_block(long block_number, const DataBlock& block) {
-    block_cache[block_number] = block;
+    f_ptr offset = block_number * sizeof(DataBlock);
+    data_file.seekp(offset); //posiciona o leitor de escritura
 
-    if (block_cache.size() >= CACHE_LIMIT) {
-        flush_cache();
+    if (!data_file.write(reinterpret_cast<const char*>(&block), sizeof(DataBlock))) {
+        throw std::runtime_error ("ERRO HASHING WRITE: Falha ao escrever bloco ");
     }
+    data_file.flush(); // Keep flush for now during debug
 }
