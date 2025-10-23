@@ -5,7 +5,7 @@
 #include <functional> // Para std::hash
 
 #include "record.hpp"
-#include "BPlusTree.hpp" // Usa a BPlusTree de inteiros
+#include "BPlusTree_long.hpp" // Usa a BPlusTree de inteiros
 
 // Função auxiliar para imprimir o artigo
 void print_artigo(const Artigo& artigo) {
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
         int search_hash = static_cast<int>(title_hasher(search_title));
 
         // 2. Inicializa e busca no índice secundário usando o HASH
-        BPlusTree secondary_index(secondary_index_path);
+        BPlusTree_long secondary_index(secondary_index_path);
         int blocks_read_index = 0;
 
         std::cout << "Buscando pelo Titulo: \"" << search_title << "\" (Hash: " << search_hash << ")" << std::endl;

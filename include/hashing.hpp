@@ -39,7 +39,7 @@ public:
 private:
 
     std::unordered_map<long, DataBlock> block_cache; // bloco_número -> bloco em memória
-    const size_t CACHE_LIMIT = 10000; // maior que os outros por conta das colisões constantes
+    const size_t CACHE_LIMIT = 20000; // maior que os outros por conta das colisões constantes
     std::fstream data_file; //gerencia a conexão para ler e escrever
     long total_blocks;  //quantidade total de blocos atualmente 
 

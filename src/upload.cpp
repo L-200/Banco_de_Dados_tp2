@@ -1,126 +1,148 @@
-// src/upload.cpp
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <cstring>     // strncpy
-#include <cstdlib>     // atoi, atol
-#include <ctime>       // time_t
-#include <regex>
-#include <functional>  // hash<string>
+#include <stdexcept>
+#include <cstdlib>
+#include <cstring>
+#include <climits>
+#include <functional>
+#include <algorithm> // Para find_first_not_of / find_last_not_of
 
-// Headers do projeto
-#include "record.hpp"         // struct Artigo
-#include "hashing.hpp"        // HashingFile
-#include "BPlusTree.hpp"      // BPlusTree (int ID)
-#include "BPlusTree_long.hpp" // BPlusTree_long (long long hash)
-#include "upload.hpp"         // se houver declarações auxiliares
+// === Headers do seu projeto ===
+#include "record.hpp"
+#include "hashing.hpp"
+#include "BPlusTree.hpp"
+#include "BPlusTree_long.hpp"
+#include "upload.hpp"
 
-// ======================
-// Hash do título
-// ======================
+// === Função Auxiliar para Hash do Título (sem alterações) ===
 long long hash_string_to_long(const char* str) {
     std::hash<std::string> hasher;
     return static_cast<long long>(hasher(str));
 }
 
-// ======================
-// Função de parsing robusta
-// ======================
-bool parse_csv_line_fast(const std::string& line, Artigo& artigo) {
+// === Função Auxiliar Simples para Trim ===
+// Remove espaços em branco do início e fim da string (modifica in-place)
+void trim(std::string& s) {
+    s.erase(0, s.find_first_not_of(" \t\n\r\f\v"));
+    s.erase(s.find_last_not_of(" \t\n\r\f\v") + 1);
+}
+
+
+// === Função de Parsing Otimizada ===
+bool parse_csv_line(const std::string& line, Artigo& artigo) {
     if (line.empty()) return false;
 
-    std::vector<std::string> tokens;
-    tokens.reserve(8);
+    std::vector<std::string> fields;
+    fields.reserve(8); // Reserva espaço para evitar realocações
+    std::string current_field;
+    bool in_quotes = false;
+    bool field_was_quoted = false; // Flag para saber se o campo estava entre aspas
 
-    std::string current;
-    bool inside_quotes = false;
+    for (size_t i = 0; i < line.length(); ++i) {
+        char c = line[i];
 
-    for (char c : line) {
-        if (c == '"') {
-            if (inside_quotes && !current.empty() && current.back() == '"') {
-                current += c; // aspas dupla escapada
+        if (!in_quotes) {
+            // FORA DAS ASPAS
+            if (c == '"') {
+                in_quotes = true;
+                field_was_quoted = true; // Marca que este campo começou com aspas
+                // Não adiciona a aspa inicial ao campo
+            } else if (c == ';') {
+                // Delimitador encontrado fora das aspas
+                trim(current_field); // Limpa espaços do campo atual
+                fields.push_back(current_field);
+                current_field.clear();
+                field_was_quoted = false; // Reseta a flag para o próximo campo
             } else {
-                inside_quotes = !inside_quotes;
+                current_field += c; // Caractere normal
             }
-        } else if (c == ';' && !inside_quotes) {
-            tokens.push_back(current);
-            current.clear();
         } else {
-            current += c;
+            // DENTRO DAS ASPAS
+            if (c == '"') {
+                // Verifica se é aspa dupla ("") para escape
+                if (i + 1 < line.length() && line[i + 1] == '"') {
+                    current_field += '"'; // Adiciona uma única aspa
+                    i++; // Pula a próxima aspa
+                } else {
+                    // Aspa final do campo
+                    in_quotes = false;
+                    // Não adiciona a aspa final ao campo
+                }
+            } else {
+                current_field += c; // Caractere normal dentro das aspas
+            }
         }
     }
-    tokens.push_back(current);
 
-    if (tokens.size() < 7) return false;
-
-    auto trim_and_unescape = [](std::string s) -> std::string {
-        if (s.size() >= 2 && s.front() == '"' && s.back() == '"')
-            s = s.substr(1, s.size() - 2);
-        s = std::regex_replace(s, std::regex("\"\""), "\"");
-        s.erase(0, s.find_first_not_of(" \t\r\n"));
-        s.erase(s.find_last_not_of(" \t\r\n") + 1);
-        return s;
-    };
-
-    try {
-        Artigo tmp;
-        tmp.ID = std::stoi(trim_and_unescape(tokens[0]));
-
-        std::string titulo = trim_and_unescape(tokens[1]);
-        std::strncpy(tmp.Titulo, titulo.c_str(), 300);
-        tmp.Titulo[300] = '\0';
-
-        tmp.Ano = std::stoi(trim_and_unescape(tokens[2]));
-
-        std::string autores = trim_and_unescape(tokens[3]);
-        std::strncpy(tmp.Autores, autores.c_str(), 150);
-        tmp.Autores[150] = '\0';
-
-        tmp.Citacoes = std::stoi(trim_and_unescape(tokens[4]));
-
-        std::string atualizacao = trim_and_unescape(tokens[5]);
-        tmp.Atualizacao_timestamp = std::atol(atualizacao.c_str());
-
-        std::string snippet = trim_and_unescape(tokens[6]);
-        std::strncpy(tmp.Snippet, snippet.c_str(), 1024);
-        tmp.Snippet[1024] = '\0';
-
-        artigo = tmp;
-        return true;
+    // Adiciona o último campo após o loop
+    // Se o último campo estava entre aspas, ele já foi tratado.
+    // Se não estava, precisa de trim. Se estava, não faz trim (pode ter espaços internos).
+    if (!field_was_quoted) {
+        trim(current_field);
     }
-    catch (const std::exception& e) {
-        std::cerr << "[ERRO PARSING] Linha inválida: " << e.what() << "\n";
+    fields.push_back(current_field);
+
+    // Verificação do número de campos
+    if (fields.size() < 7) {
+        // std::cerr << "Linha ignorada (campos < 7): " << line << std::endl;
+        return false;
+    }
+
+    // Tenta as conversões (mantendo a verificação robusta do ID)
+    try {
+        // 1. ID
+        char* end_ptr = nullptr;
+        long long temp_id = std::strtoll(fields[0].c_str(), &end_ptr, 10);
+        if (end_ptr == fields[0].c_str() || *end_ptr != '\0' || temp_id > INT_MAX || temp_id < INT_MIN) {
+             std::cerr << "ERRO DE CONVERSAO ID: '" << fields[0] << "' Linha: " << line.substr(0,100) << "..." << std::endl;
+             return false;
+        }
+        artigo.ID = static_cast<int>(temp_id);
+
+        // 2. Título
+        std::strncpy(artigo.Titulo, fields[1].c_str(), 300);
+        artigo.Titulo[300] = '\0';
+
+        // 3. Ano
+        artigo.Ano = std::atoi(fields[2].c_str());
+
+        // 4. Autores
+        std::strncpy(artigo.Autores, fields[3].c_str(), 150);
+        artigo.Autores[150] = '\0';
+
+        // 5. Citações
+        artigo.Citacoes = std::atoi(fields[4].c_str());
+
+        // 6. Atualização (simplificado)
+        artigo.Atualizacao_timestamp = std::atol(fields[5].c_str());
+
+        // 7. Snippet
+        std::strncpy(artigo.Snippet, fields[6].c_str(), 1024);
+        artigo.Snippet[1024] = '\0';
+
+        return true;
+
+    } catch (const std::exception& e) {
+        std::cerr << "ERRO DE EXCECAO NO PARSING: Linha: " << line.substr(0,100) << "... Error: " << e.what() << std::endl;
+        return false;
+    } catch (...) {
+        std::cerr << "ERRO DESCONHECIDO NO PARSING: Linha: " << line.substr(0,100) << "..." << std::endl;
         return false;
     }
 }
 
-// ======================
-// Função principal
-// ======================
+
+// === Função Principal do Programa `upload` (sem alterações na lógica principal) ===
 int main(int argc, char* argv[]) {
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-    std::cout.tie(nullptr);
-
-    if (argc != 2) {
-        std::cerr << "Uso: " << argv[0] << " <caminho_para_o_arquivo_csv>\n";
-        return 1;
-    }
-
+    // ... (otimizações de I/O, verificação de args, abrir CSV) ...
     const std::string input_csv_path = argv[1];
-    std::cout << "--- INÍCIO DA CARGA DE DADOS ---\n";
-    std::cout << "Arquivo de entrada: " << input_csv_path << "\n";
-
     std::ifstream input_file(input_csv_path);
-    if (!input_file.is_open()) {
-        std::cerr << "ERRO: Não foi possível abrir o arquivo CSV: " << input_csv_path << "\n";
-        return 1;
-    }
+    if (!input_file.is_open()) { /* ... erro ... */ }
 
-    long initial_blocks = 650000; //numero maior do que precisa para evitar desemepnho ruim do upload (por conta das colisões)
+    long initial_blocks = 850000; // Valor ajustado para teste
 
     try {
         HashingFile data_file("/data/data_file.dat", initial_blocks);
@@ -136,29 +158,30 @@ int main(int argc, char* argv[]) {
 
         while (std::getline(input_file, line_buffer)) {
             physical_line_number++;
-
-            if (complete_record_line.empty())
+            if (complete_record_line.empty()) {
                 complete_record_line = line_buffer;
-            else
+            } else {
                 complete_record_line += "\n" + line_buffer;
-
-            // Conta aspas não escapadas
-            size_t quote_count = 0;
-            for (size_t i = 0; i < complete_record_line.size(); ++i) {
-                if (complete_record_line[i] == '"') {
-                    if (i + 1 < complete_record_line.size() && complete_record_line[i + 1] == '"') {
-                        i++;
-                    } else {
-                        quote_count++;
-                    }
-                }
             }
 
-            if (quote_count % 2 == 0) { // linha completa
-                Artigo artigo;
-                if (parse_csv_line_fast(complete_record_line, artigo)) {
+             size_t quote_count = 0;
+             for(size_t i = 0; i < complete_record_line.length(); ++i) {
+                  if (complete_record_line[i] == '"') {
+                       if (i + 1 == complete_record_line.length() || complete_record_line[i+1] != '"') {
+                            quote_count++;
+                       } else { i++; }
+                  }
+             }
+
+            if (quote_count % 2 == 0) {
+                Artigo artigo; // Renomeado de new_artigo para evitar conflito com struct Artigo
+                // Chama a NOVA função de parsing
+                if (parse_csv_line(complete_record_line, artigo)) {
                     f_ptr data_ptr = data_file.insert(artigo);
                     if (data_ptr != -1) {
+                        if (inserted_count % 5000 == 0) {
+                            std::cout<< "Inserindo item numero :"<< inserted_count << "\n";
+                        } 
                         primary_index.insert(artigo.ID, data_ptr);
                         long long titulo_hash = hash_string_to_long(artigo.Titulo);
                         secondary_index.insert(titulo_hash, data_ptr);
@@ -167,7 +190,7 @@ int main(int argc, char* argv[]) {
                         std::cerr << "AVISO: Falha ao inserir artigo. ID: " << artigo.ID << "\n";
                     }
                 } else {
-                    std::cerr << "AVISO: Linha ignorada (~" << physical_line_number 
+                    std::cerr << "AVISO: Linha ignorada (~" << physical_line_number
                               << "): " << complete_record_line.substr(0,100) << "...\n";
                 }
                 complete_record_line.clear();

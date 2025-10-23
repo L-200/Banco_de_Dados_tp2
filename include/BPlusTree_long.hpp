@@ -60,7 +60,7 @@ public:
 private:
 
     std::unordered_map<f_ptr, BPlusTree_long_Node> node_cache; //estabelecendo o cache
-    static const int MAX_CACHE_SIZE = 5000;
+    static const int MAX_CACHE_SIZE = 6000; //para compensar pela menor quantidade de itens por node
 
     std::fstream index_file;    // gerencia conexão para ler e escrever no arquivo de índice
     f_ptr root_ptr;             // ponteiro para o nó raiz no arquivo
