@@ -130,14 +130,13 @@ bool parse_csv_line(const std::string& line, Artigo& artigo) {
 }
 
 
-// === Função Principal do Programa `upload` (sem alterações na lógica principal) ===
 int main(int argc, char* argv[]) {
-    // ... (otimizações de I/O, verificação de args, abrir CSV) ...
+   
     const std::string input_csv_path = argv[1];
     std::ifstream input_file(input_csv_path);
     if (!input_file.is_open()) { /* ... erro ... */ }
 
-    long initial_blocks = 750000; // Valor ajustado para teste
+    long initial_blocks = 750000;
 
     try {
         HashingFile data_file("/data/data_file.dat", initial_blocks);
@@ -147,7 +146,7 @@ int main(int argc, char* argv[]) {
 
         std::string line_buffer;
         std::string complete_record_line;
-        std::getline(input_file, line_buffer); // cabeçalho
+        std::getline(input_file, line_buffer); 
         int inserted_count = 0;
         long physical_line_number = 1;
 
@@ -169,7 +168,7 @@ int main(int argc, char* argv[]) {
              }
 
             if (quote_count % 2 == 0) {
-                Artigo artigo; // Renomeado de new_artigo para evitar conflito com struct Artigo
+                Artigo artigo; 
                 // Chama a NOVA função de parsing
                 if (parse_csv_line(complete_record_line, artigo)) {
                     f_ptr data_ptr = data_file.insert(artigo);
