@@ -54,4 +54,4 @@ private:
 
 };
 
-#endif // HASHING_HPP
+#endif 

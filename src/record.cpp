@@ -1,9 +1,8 @@
 #include "record.hpp"
-#include <cstring> // Para std::memcpy
+#include <cstring> 
 #include <iostream>
 
-// O tamanho real pode ser ligeiramente maior devido ao alinhamento (padding)
-// Usamos sizeof(Artigo) para garantir a precisão no tamanho total do registro.
+
 const size_t RECORD_SIZE = sizeof(Artigo); 
 
 // 1. SERIALIZAÇÃO (Struct Artigo -> Bytes)

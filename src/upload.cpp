@@ -73,8 +73,8 @@ bool parse_csv_line(const std::string& line, Artigo& artigo) {
     }
 
     // Adiciona o último campo após o loop
-    // Se o último campo estava entre aspas, ele já foi tratado.
-    // Se não estava, precisa de trim. Se estava, não faz trim (pode ter espaços internos).
+    // Se o último campo estava entre aspas, ele já foi tratado
+    // Se não estava, precisa de trim
     if (!field_was_quoted) {
         trim(current_field);
     }
