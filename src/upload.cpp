@@ -17,11 +17,6 @@
 #include "BPlusTree_long.hpp"
 #include "upload.hpp"
 
-// === Função Auxiliar para Hash do Título (sem alterações) ===
-long long hash_string_to_long(const char* str) {
-    std::hash<std::string> hasher;
-    return static_cast<long long>(hasher(str));
-}
 
 // === Função Auxiliar Simples para Trim ===
 // Remove espaços em branco do início e fim da string (modifica in-place)
@@ -183,7 +178,7 @@ int main(int argc, char* argv[]) {
                             std::cout<< "Inserindo item numero :"<< inserted_count << "\n";
                         } 
                         primary_index.insert(artigo.ID, data_ptr);
-                        long long titulo_hash = hash_string_to_long(artigo.Titulo);
+                        long long titulo_hash = BPlusTree_long::hash_string_to_long(artigo.Titulo);
                         secondary_index.insert(titulo_hash, data_ptr);
                         inserted_count++;
                     } else {
