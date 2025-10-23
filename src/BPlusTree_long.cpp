@@ -170,6 +170,11 @@ void BPlusTree_long::insert(long long key, f_ptr data_ptr) {
     }
 }
 
+long long BPlusTree_long::hash_string_to_long(const char* str) {
+    std::hash<std::string> hasher;
+    return static_cast<long long>(hasher(str));
+}
+
 long BPlusTree_long::get_total_blocks() {
     return BPlusTree_long::block_count;
 }

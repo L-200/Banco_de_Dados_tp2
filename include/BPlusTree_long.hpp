@@ -55,6 +55,9 @@ public:
     // função principal para buscar uma chave, retornando o ponteiro para o registro de dados e o numero de blocos lidos
     f_ptr search(long long key, int& blocks_read);
 
+    // função para transformar o titulo em long long usando o hash
+    static long long hash_string_to_long(const char* str);
+
     long get_total_blocks();
 
 private:
