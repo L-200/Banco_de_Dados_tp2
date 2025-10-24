@@ -115,6 +115,12 @@ BPlusTree_long::~BPlusTree_long() {
     }
 }
 
+long long BPlusTree_long::hash_string_to_long(const char* str) {
+    std::hash<std::string> hasher;
+    return static_cast<long long>(hasher(str));
+}
+
+
 //encontra uma chave e retorna o seu ponteiro 
 f_ptr BPlusTree_long::search(long long key, int& blocks_read) {
 

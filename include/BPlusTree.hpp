@@ -55,6 +55,7 @@ public:
     // função principal para buscar uma chave, retornando o ponteiro para o registro de dados e o numero de blocos lidos
     f_ptr search(int key, int& blocks_read);
 
+    // função que retorna a quantidade de blocos
     long get_total_blocks();
 
 private:

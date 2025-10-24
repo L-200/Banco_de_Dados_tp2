@@ -3,7 +3,10 @@
 
 #include <string>
 #include <vector>
-#include "record.hpp" 
+#include "record.hpp"
+
+//quantidade de blocos
+long initial_blocks = 750000;
 
 //Remove espaços em branco do início e fim da string (modifica in-place)
 void trim(std::string& s);
