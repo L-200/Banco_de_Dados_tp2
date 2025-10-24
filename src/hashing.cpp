@@ -7,27 +7,27 @@
 #include "hashing.hpp" 
 #include "record.hpp"
 
-// construtor 
+// Construtor 
 HashingFile::HashingFile(const std::string& data_file_path, long num_total_blocks) {
     total_blocks = num_total_blocks;
-    //tentando abrir data file
+    //Tentando abrir data file
     data_file.open(data_file_path, std::ios::in | std::ios::out | std::ios::binary);
 
     if (!data_file.is_open()) {
-        // criando novo arquivo zerado
+        // Criando novo arquivo zerado
         std::ofstream create_file(data_file_path, std::ios::out | std::ios::binary | std::ios::trunc);
         if (!create_file) {
             throw std::runtime_error("ERRO: não foi possível criar o arquivo de dados");
         }
         create_file.close();
 
-        // reabrindo o arquivo para leitura e escrita
+        // Reabrindo o arquivo para leitura e escrita
         data_file.open(data_file_path, std::ios::in | std::ios::out | std::ios::binary);
         if (!data_file.is_open()) {
             throw std::runtime_error("ERRO: não foi possível reabrir o arquivo de dados");
         }
 
-        // inicializando todos os blocos vazios
+        // Inicializando todos os blocos vazios
         DataBlock empty_block{};
         for (long i = 0; i < total_blocks; i++) {
             write_block(i, empty_block);
@@ -36,7 +36,7 @@ HashingFile::HashingFile(const std::string& data_file_path, long num_total_block
     }
 }
 
-//fechando o arquivo
+//Fechando o arquivo
 HashingFile::~HashingFile() {
     if (!block_cache.empty()) {
         flush_cache();
@@ -47,30 +47,30 @@ HashingFile::~HashingFile() {
 }
 
 f_ptr HashingFile::insert(const Artigo& new_artigo) {
-    //calculando endereço do bloco inicial
+    //Calculando endereço do bloco inicial
     long initial_block = hash_function(new_artigo.ID);
     long current_block_num = initial_block;
 
     for (int i = 0; i < total_blocks; i++) { 
         DataBlock block = read_block(current_block_num); 
 
-        if (block.record_count < RECORDS_PER_BLOCK) { //achamos onde vamos inserir
+        if (block.record_count < RECORDS_PER_BLOCK) { //Achamos onde vamos inserir
             int record_pos = block.record_count;
             block.records[record_pos] = new_artigo;
             block.record_count++;
             write_block(current_block_num, block);
-            return (current_block_num * sizeof(DataBlock)) + (record_pos * sizeof(Artigo)); //retornando o endereço exato onde inserimos 
+            return (current_block_num * sizeof(DataBlock)) + (record_pos * sizeof(Artigo)); //Retornando o endereço exato onde inserimos 
         } 
 
-        //se o bloco estiver cheio, tentamos inserir ao proximo bloco, se chegar no final de arquivo volta ao começo 
+        //Se o bloco estiver cheio, tentamos inserir ao proximo bloco, se chegar no final de arquivo volta ao começo 
         current_block_num = (current_block_num + 1) % total_blocks;
-        //se voltamos ao bloco inicial não temos mais espaço para inserir o novo arquivo
+        //Se voltamos ao bloco inicial, não temos mais espaço para inserir o novo arquivo
         if (current_block_num == initial_block) {
             std::cerr << "ERRO: Arquivo de dados está cheio!" <<std::endl;
             return -1;
         }
     }
-    return -1; //falha na inserção
+    return -1; //Falha na inserção
 }
 
 Artigo HashingFile::find_by_id(int id, int& blocks_read) {
@@ -78,26 +78,26 @@ Artigo HashingFile::find_by_id(int id, int& blocks_read) {
     long initial_block = hash_function(id);
     long current_block_num = initial_block;
 
-    for (int i = 0; i < total_blocks; i++) { //loop seguindo a mesma logica do insert
+    for (int i = 0; i < total_blocks; i++) { //Loop seguindo a mesma logica do insert
         DataBlock block = read_block(current_block_num);
         blocks_read++; 
 
         for (int j = 0; j < block.record_count; j++) {
-            if (block.records[j].ID == id) { //checa se o artigo está no bloco
+            if (block.records[j].ID == id) { //Checa se o artigo está no bloco
                 return block.records[j];
             }
         }
 
-        /*  trecho removido pois levava o algoritmo a não achar artigos que sofreram colisões e o bloco seguinte ja estava cheio
-        if (block.record_count < RECORDS_PER_BLOCK) { //artigo deveria estar nesse bloco
+    
+        if (block.record_count < RECORDS_PER_BLOCK) { //Artigo deveria estar nesse bloco
             break;
         }
-        */
+        
 
         current_block_num = (current_block_num + 1) % total_blocks;
 
         if (current_block_num == initial_block) {
-            break; //demos a volta no arquivo todo e ainda não achamos
+            break; // Foi dado a volta no arquivo todo e ainda não achado
         }
     }
 
@@ -109,19 +109,19 @@ Artigo HashingFile::find_by_id(int id, int& blocks_read) {
 
 //FUNÇÕES PRIVADAS 
 
-long HashingFile::hash_function(int key) { //padrão da industria, tenta gerar um numero bastante unico
+long HashingFile::hash_function(int key) { // Padrão da indústria, tenta gerar um número bastante único
     return key % total_blocks;
 }
 
 DataBlock HashingFile::read_block(long block_number) {
-    //procurando bloco no cache
+    // Procurando bloco no cache
     auto it = block_cache.find(block_number);
-    //verificando se o bloco foi encontrado no cache
+    //Verificando se o bloco foi encontrado no cache
     if (it != block_cache.end()) { 
-        return it->second; //retorna o bloco diretamente da memoria
+        return it->second; // Retorna o bloco diretamente da memória
     }
 
-    //se o bloco não esta no cache precisamos ler ele do arquivo
+    //Se o bloco não está no cache precisamos ler ele do arquivo
     DataBlock block;
     f_ptr offset = block_number * sizeof(DataBlock);
     data_file.seekg(offset);
@@ -130,11 +130,11 @@ DataBlock HashingFile::read_block(long block_number) {
     return block;
 }
 
-//escreve todos os blocos dentro do cache de volta no disco
+// Escreve todos os blocos dentro do cache de volta no disco
 void HashingFile::flush_cache() {
     for (const auto& pair : block_cache) {
-        long block_number = pair.first; //pegando o numero do bloco
-        const DataBlock& block = pair.second; //pegando para o bloco de dados
+        long block_number = pair.first; // Pegando o número do bloco
+        const DataBlock& block = pair.second; // Pegando para o bloco de dados
 
         f_ptr offset = block_number * sizeof(DataBlock);
         data_file.seekp(offset);
@@ -147,7 +147,7 @@ void HashingFile::flush_cache() {
 
 void HashingFile::write_block(long block_number, const DataBlock& block) {
     f_ptr offset = block_number * sizeof(DataBlock);
-    data_file.seekp(offset); //posiciona o leitor de escritura
+    data_file.seekp(offset); // Posiciona o leitor de escritura
 
     if (!data_file.write(reinterpret_cast<const char*>(&block), sizeof(DataBlock))) {
         throw std::runtime_error ("ERRO HASHING WRITE: Falha ao escrever bloco ");
