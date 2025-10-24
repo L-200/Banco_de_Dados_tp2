@@ -46,7 +46,7 @@ BPlusTree::BPlusTree(const std::string& index_file_path) {
         index_file.seekg(0, std::ios::end);
         long file_size = index_file.tellg();
 
-        if (file_size < sizeof(BPlusTreeMetadata)) {
+        if ((unsigned long)file_size < sizeof(BPlusTreeMetadata)) {
             // arquivo existe mas é muito pequeno, deve ser tratado como novo
             std::cout << "CONSTRUTOR DA ARVORE B+ (INT): Arquivo existente muito pequeno. Re-inicializando..." << std::endl;
             index_file.close(); // fecha para reabrir e truncar

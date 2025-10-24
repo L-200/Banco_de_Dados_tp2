@@ -10,7 +10,7 @@
 #include <functional>
 #include <algorithm> // Para find_first_not_of / find_last_not_of
 
-// === Headers do seu projeto ===
+// === Headers do projeto ===
 #include "record.hpp"
 #include "hashing.hpp"
 #include "BPlusTree.hpp"
@@ -137,8 +137,6 @@ int main(int argc, char* argv[]) {
         std::cerr << "Erro ao abrir o arquivo CSV.\n";
         return 1;
     }
-
-    long initial_blocks = 750000;
 
     try {
         HashingFile data_file("/data/data_file.dat", initial_blocks);

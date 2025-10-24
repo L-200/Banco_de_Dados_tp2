@@ -12,12 +12,6 @@
 #include "record.hpp"         // Define a struct Artigo
 #include "BPlusTree_long.hpp" // Define a classe BPlusTree_long (para índice secundário)
 
-// === Função auxiliar para hashing do título ===
-// IMPORTANTE: Esta função DEVE ser idêntica à usada em upload.cpp
-long long hash_string_to_long(const char* str) {
-    std::hash<std::string> hasher;
-    return static_cast<long long>(hasher(str));
-}
 
 // === Função auxiliar para imprimir artigo ===
 void print_artigo(const Artigo& artigo) {
@@ -70,7 +64,7 @@ int main(int argc, char* argv[]) {
 
     try {
         // Calculando o hash DO TÍTULO TRUNCADO
-        long long search_hash = hash_string_to_long(truncated_search_titulo);
+        long long search_hash = BPlusTree_long::hash_string_to_long(truncated_search_titulo);
         std::cout << "Hash gerado: " << search_hash << std::endl << std::endl;
 
         // Inicializando a B+Tree secundária (deve abrir o arquivo existente)

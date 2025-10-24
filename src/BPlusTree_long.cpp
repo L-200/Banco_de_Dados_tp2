@@ -46,7 +46,7 @@ BPlusTree_long::BPlusTree_long(const std::string& index_file_path) {
         index_file.seekg(0, std::ios::end);
         long file_size = index_file.tellg();
 
-        if (file_size < sizeof(BPlusTree_long_Metadata)) {
+        if ((unsigned long)file_size < sizeof(BPlusTree_long_Metadata)) {
             // arquivo existe mas é muito pequeno, deve ser tratado como novo
             std::cout << "CONSTRUTOR DA ARVORE B+ (LONG): Arquivo existente muito pequeno. Re-inicializando..." << std::endl;
             index_file.close(); // fecha para reabrir e truncar
@@ -174,11 +174,6 @@ void BPlusTree_long::insert(long long key, f_ptr data_ptr) {
         write_block(new_root_ptr, new_root);
         root_ptr = new_root_ptr;
     }
-}
-
-long long BPlusTree_long::hash_string_to_long(const char* str) {
-    std::hash<std::string> hasher;
-    return static_cast<long long>(hasher(str));
 }
 
 long BPlusTree_long::get_total_blocks() {
