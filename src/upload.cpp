@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        HashingFile data_file("/data/data_file.dat", initial_blocks);
+        HashingFile data_file("/data/data_file.dat", blocks_qntd);
         BPlusTree primary_index("/data/primary_index.idx");
         BPlusTree_long secondary_index("/data/secondary_index.idx");
         std::cout << "Estruturas inicializadas.\n";

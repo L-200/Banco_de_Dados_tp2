@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
 
     try {
         // 2. Inicializa o HashingFile (que deve ABRIR o arquivo existente)
-        HashingFile data_file(data_file_path, total_blocks);
+        HashingFile data_file(data_file_path, blocks_qntd);
 
         int blocks_read = 0;
 
@@ -80,12 +80,12 @@ int main(int argc, char* argv[]) {
 
             std::cout << "\n--- Métricas da Busca ---" << std::endl;
             std::cout << "Blocos lidos para encontrar o registro: " << blocks_read << std::endl;
-            std::cout << "Total de blocos no arquivo de dados: " << total_blocks << std::endl;
+            std::cout << "Total de blocos no arquivo de dados: " << blocks_qntd << std::endl;
         } else {
             std::cout << "\nRegistro com ID " << search_id << " nao foi encontrado." << std::endl;
             std::cout << "--- Métricas da Busca ---" << std::endl;
             std::cout << "Blocos lidos durante a tentativa: " << blocks_read << std::endl;
-            std::cout << "Total de blocos no arquivo de dados: " << total_blocks << std::endl;
+            std::cout << "Total de blocos no arquivo de dados: " << blocks_qntd << std::endl;
         }
 
     } catch (const std::runtime_error& e) {
