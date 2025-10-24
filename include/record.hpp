@@ -25,16 +25,4 @@ struct Artigo {
 };
 
 
-
-/**
- * @brief Serializa um objeto Artigo para um array de bytes de tamanho fixo
- */
-void serialize_record(const Artigo& artigo, char* buffer);
-
-/**
- * @brief Desserializa um array de bytes (lido do disco) de volta para um objeto Artigo
- */
-Artigo deserialize_record(const char* buffer);
-
-
 #endif 
