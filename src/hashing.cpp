@@ -152,5 +152,5 @@ void HashingFile::write_block(long block_number, const DataBlock& block) {
     if (!data_file.write(reinterpret_cast<const char*>(&block), sizeof(DataBlock))) {
         throw std::runtime_error ("ERRO HASHING WRITE: Falha ao escrever bloco ");
     }
-    data_file.flush(); // Keep flush for now during debug
+    data_file.flush(); 
 }
