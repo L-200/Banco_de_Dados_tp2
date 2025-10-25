@@ -20,39 +20,37 @@ enum class LogLevel {
 // Função (inline) para obter o nível de log atual
 //lê a variável de ambiente LOG_LEVEL apenas uma vez e guarda o resultado
 inline LogLevel getCurrentLogLevel() {
-    // 'static' garante que a inicialização só ocorre na primeira chamada
-    static const LogLevel currentLevel = []() {
-        LogLevel level = LogLevel::INFO; // Nível padrão se não definido
-        const char* level_str = std::getenv("LOG_LEVEL");
+    static const LogLevel currentLevel = []() { // <-- Lambda auto-executável (função sem nome diretamente no código)
+        LogLevel level = LogLevel::INFO; // Padrão é INFO
+        const char* level_str = std::getenv("LOG_LEVEL"); // Lê variável de ambiente
         if (level_str) {
             std::string level_s = level_str;
-            std::transform(level_s.begin(), level_s.end(), level_s.begin(), ::tolower); // Case-insensitive
+            std::transform(level_s.begin(), level_s.end(), level_s.begin(), ::tolower); // Converte para minúsculas
 
+            // Compara com os níveis conhecidos
             if (level_s == "error") level = LogLevel::ERROR;
             else if (level_s == "warn")  level = LogLevel::WARN;
             else if (level_s == "info")  level = LogLevel::INFO;
             else if (level_s == "debug") level = LogLevel::DEBUG;
             else {
-                // Imprime um aviso diretamente em cerr se o nível for inválido
+                // Aviso se o valor for inválido
                 std::cerr << "[WARN] LOG_LEVEL inválido ('" << level_str << "'). Usando padrão INFO." << std::endl;
             }
         }
-        return level;
-    }(); // Chama a lambda imediatamente para inicializar
-    
-    return currentLevel;
+        return level; // Retorna o nível determinado
+    }(); // <-- Executa a lambda AGORA para inicializar currentLevel
+
+    return currentLevel; // Retorna o nível (já calculado)
 }
 
 // macros para incluir __FILE__ e __LINE__ e permitir streaming fácil
 // O 'do { ... } while(0)' é um truque comum para tornar o macro seguro em if/else
-
+/*os ... indicam número variável de argumentos adicionais (permite o uso de <<)*/
 #define LOG_MSG(level, prefix, ...) \
     do { \
         if (getCurrentLogLevel() >= level) { \
             /* Usa ostringstream para construir a mensagem permitindo '<<' */ \
             std::ostringstream oss_log_macro; \
-            /* Opcional: Adiciona arquivo e linha para DEBUG */ \
-            /* if (level == LogLevel::DEBUG) { oss_log_macro << "[" << __FILE__ << ":" << __LINE__ << "] "; } */ \
             oss_log_macro << prefix << __VA_ARGS__; \
             /* Envia para cerr (ERRO/WARN) ou cout (INFO/DEBUG) */ \
             if (level <= LogLevel::WARN) { \
