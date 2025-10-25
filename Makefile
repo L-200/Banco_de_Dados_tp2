@@ -42,7 +42,7 @@ $(BINDIR)/%: $(SRCDIR)/%.cpp $(SHARED_OBJS) | $(BINDIR)
 $(BINDIR):
 	@mkdir -p $(BINDIR)
 
-# limpando o 
+# limpando
 clean:
 	@echo "Limpando arquivos gerados"
 	# Apaga os arquivos objeto do diretório src
@@ -56,18 +56,23 @@ docker-build:
 	@docker build -t $(IMAGE_NAME) .
 
 docker-run-upload:
-	@docker run --rm -v "$(shell pwd)/data:/data" $(IMAGE_NAME) ./bin/upload /data/artigo.csv
+	# Adicionado -e LOG_LEVEL=$(LOG_LEVEL)
+	@docker run --rm -v "$(shell pwd)/data:/data" -e LOG_LEVEL=$(LOG_LEVEL) $(IMAGE_NAME) ./bin/upload /data/artigo.csv
 docker-run-findrec:
-	@docker run --rm -v $(shell pwd)/data:/data $(IMAGE_NAME) ./bin/findrec $(ARGS)
+	# Adicionado -e LOG_LEVEL=$(LOG_LEVEL)
+	@docker run --rm -v $(shell pwd)/data:/data -e LOG_LEVEL=$(LOG_LEVEL) $(IMAGE_NAME) ./bin/findrec $(ARGS)
 docker-run-seek1:
-	@docker run --rm -v $(shell pwd)/data:/data $(IMAGE_NAME) ./bin/seek1 $(ARGS)
+	# Adicionado -e LOG_LEVEL=$(LOG_LEVEL)
+	@docker run --rm -v $(shell pwd)/data:/data -e LOG_LEVEL=$(LOG_LEVEL) $(IMAGE_NAME) ./bin/seek1 $(ARGS)
 docker-run-seek2:
-	@docker run --rm -v $(shell pwd)/data:/data $(IMAGE_NAME) ./bin/seek2 $(ARGS)
+	# Adicionado -e LOG_LEVEL=$(LOG_LEVEL)
+	@docker run --rm -v $(shell pwd)/data:/data -e LOG_LEVEL=$(LOG_LEVEL) $(IMAGE_NAME) ./bin/seek2 $(ARGS)
 
 # regras para ajudar o usuario
 .PHONY: help
 help:
 	@echo "Uso:"
+	@echo "  export LOG_LEVEL=<debug|info|warning|error>  # Define o nível de log para os programas Docker"
 	@echo "  make build          - Compila todos os programas na pasta ./bin/"
 	@echo "  make clean          - Remove todos os arquivos compilados"
 	@echo "  make docker-build   - Constrói a imagem Docker"

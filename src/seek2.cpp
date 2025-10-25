@@ -11,9 +11,11 @@
 // === Headers do projeto ===
 #include "record.hpp"         // Define a struct Artigo
 #include "BPlusTree_long.hpp" // Define a classe BPlusTree_long (para índice secundário)
+#include "log.hpp" //para log levels
 
 
 // === Função auxiliar para imprimir artigo ===
+//não tem porquê de inserir log aqui, essa é a  principal funcionalidade do código !
 void print_artigo(const Artigo& artigo) {
     std::cout << "------------------------------------------" << std::endl;
     std::cout << "ID: " << artigo.ID << std::endl;
@@ -38,8 +40,8 @@ void print_artigo(const Artigo& artigo) {
 int main(int argc, char* argv[]) {
     // Verificando se pelo menos um argumento (parte do título) foi passado
     if (argc < 2) {
-        std::cerr << "Uso: " << argv[0] << " <Titulo_do_artigo>" << std::endl;
-        std::cerr << "Dica: Se o titulo contiver espacos, nao precisa de aspas." << std::endl;
+        LOG_ERROR("Uso: " << argv[0] << " <Titulo_do_artigo>" << std::endl);
+        LOG_ERROR("Dica: Se o titulo contiver espacos, não precisa de aspas." << std::endl);
         return 1;
     }
 
@@ -60,12 +62,12 @@ int main(int argc, char* argv[]) {
     const std::string secondary_index_path = "/data/secondary_index.idx";
     const std::string data_file_path = "/data/data_file.dat";
 
-    std::cout << "Buscando pelo Titulo (truncado para 300 caracteres): \"" << truncated_search_titulo << "\"" << std::endl;
+    LOG_INFO("Buscando pelo Titulo (truncado para 300 caracteres): \"" << truncated_search_titulo << "\"");
 
     try {
         // Calculando o hash DO TÍTULO TRUNCADO
         long long search_hash = BPlusTree_long::hash_string_to_long(truncated_search_titulo);
-        std::cout << "Hash gerado: " << search_hash << std::endl << std::endl;
+        LOG_DEBUG("Hash gerado: " << search_hash);
 
         // Inicializando a B+Tree secundária (deve abrir o arquivo existente)
         BPlusTree_long secondary_index(secondary_index_path);
@@ -78,27 +80,30 @@ int main(int argc, char* argv[]) {
 
         // Se o hash foi encontrado no índice
         if (data_ptr != -1) {
-            std::cout << "Hash encontrado no indice! Ponteiro para dados: " << data_ptr << std::endl;
-            std::cout << "Lendo registro do arquivo de dados para verificacao..." << std::endl;
+            LOG_INFO("Hash encontrado no indice! Ponteiro para dados: " << data_ptr);
+            LOG_INFO("Lendo registro do arquivo de dados para verificacao...");
 
             // abre o arquivo de dados principal para ler o registro completo
             std::ifstream data_file(data_file_path, std::ios::binary);
             if (!data_file) {
-                 throw std::runtime_error("ERRO FATAL: Nao foi possivel abrir o arquivo de dados '" + data_file_path + "'");
+                LOG_ERROR("Erro ao tentar abrir o arquivo de dados");
+                throw std::runtime_error("ERRO FATAL: Não foi possivel abrir o arquivo de dados '" + data_file_path + "'");
             }
 
             // Posiciona no local indicado pelo índice
             data_file.seekg(data_ptr);
             if (!data_file) {
-                 data_file.close();
-                 throw std::runtime_error("ERRO FATAL: Falha ao posicionar no arquivo de dados no offset " + std::to_string(data_ptr));
+                data_file.close();
+                LOG_ERROR("Falha ao posicionar cursor no arquivo de dados");
+                throw std::runtime_error("ERRO FATAL: Falha ao posicionar no arquivo de dados no offset " + std::to_string(data_ptr));
             }
 
             Artigo found_artigo; // Cria struct para receber os dados
             // Lê o registro completo do arquivo de dados
             if (!data_file.read(reinterpret_cast<char*>(&found_artigo), sizeof(Artigo))) {
-                 data_file.close();
-                 throw std::runtime_error("ERRO FATAL: Falha ao ler o registro do arquivo de dados no offset " + std::to_string(data_ptr));
+                data_file.close();
+                LOG_ERROR("Falha ao ler o registro no arquivo de dados na posição do offset");
+                throw std::runtime_error("ERRO FATAL: Falha ao ler o registro do arquivo de dados no offset " + std::to_string(data_ptr));
             }
             data_file.close();
 
@@ -112,7 +117,7 @@ int main(int argc, char* argv[]) {
             } else {
                 // Hash coincidiu, mas os títulos não. É uma colisão de hash (muito rara em hash de long long)
                  std::cout << "\nAVISO: Colisao de hash detectada ou erro de dados." << std::endl;
-                 std::cout << "  Hash encontrado, mas o titulo no registro nao corresponde ao buscado." << std::endl;
+                 std::cout << "  Hash encontrado, mas o titulo no registro não corresponde ao buscado." << std::endl;
                  std::cout << "  Titulo Buscado (truncado): " << truncated_search_titulo << std::endl;
                  std::cout << "  Titulo no Registro Lido: "; std::cout.write(found_artigo.Titulo, strnlen(found_artigo.Titulo, 300)); std::cout << std::endl;
             }
@@ -121,24 +126,24 @@ int main(int argc, char* argv[]) {
 
         // Se o hash não foi encontrado OU se foi colisão...
         if (!record_found_and_verified) {
-             std::cout << "\nRegistro com o titulo (truncado) \"" << truncated_search_titulo << "\" nao foi encontrado." << std::endl;
+            LOG_INFO("\nRegistro com o titulo (truncado) \"" << truncated_search_titulo << "\" não foi encontrado.");
         }
 
         // Exibe as métricas de busca no índice secundário
-        std::cout << "\n--- Metricas da Busca no Indice Secundario ---" << std::endl;
-        std::cout << "Blocos lidos no arquivo de indice: " << blocks_read_index << std::endl;
+        LOG_INFO("\n--- Metricas da Busca no Indice Secundario ---");
+        LOG_INFO("Blocos lidos no arquivo de indice: " << blocks_read_index);
         try {
-             std::cout << "Total de blocos no arquivo de indice secundario: " << secondary_index.get_total_blocks() << std::endl;
+            LOG_INFO("Total de blocos no arquivo de indice secundario: " << secondary_index.get_total_blocks());
         } catch (...) {
-             std::cerr << "AVISO: Nao foi possivel obter o total de blocos do indice secundario." << std::endl;
+            LOG_ERROR("AVISO: Não foi possivel obter o total de blocos do indice secundario.");
         }
 
 
     } catch (const std::runtime_error& e) {
-        std::cerr << "ERRO FATAL durante a busca: " << e.what() << std::endl;
+        LOG_ERROR("ERRO FATAL durante a busca: " << e.what());
         return 1;
     } catch (...) {
-         std::cerr << "ERRO FATAL desconhecido durante a busca." << std::endl;
+        LOG_ERROR("ERRO FATAL desconhecido durante a busca." << std::endl);
         return 1;
     }
 

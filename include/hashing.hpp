@@ -6,9 +6,6 @@
 #include <fstream>  // Biblioteca para manipular arquivos de disco
 #include <unordered_map>
 
-//quantidade de blocos
-long blocks_qntd = 750000;
-
 using f_ptr = long; // Endereço dentro de um arquivo
 
 //id(4) + titulo(301) + ano(4) + autores(151) + citacoes(4) + atualização(20) + snippet(1025) ≃ 1509 bytes

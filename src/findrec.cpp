@@ -6,9 +6,14 @@
 
 #include "record.hpp"
 #include "hashing.hpp"
+#include "log.hpp"
 #include "findrec.hpp"
 
+//quantidade de blocos
+long blocks_qntd = 750000;
+
 // Função auxiliar para imprimir os campos de um artigo de forma legível
+//não precisa de log
 void print_artigo(const Artigo& artigo) {
     std::cout << "------------------------------------------" << std::endl;
     std::cout << "ID: " << artigo.ID << std::endl;
@@ -43,7 +48,7 @@ void print_artigo(const Artigo& artigo) {
 int main(int argc, char* argv[]) {
     // 1. Validação dos argumentos
     if (argc != 2) {
-        std::cerr << "Uso: " << argv[0] << " <ID_do_artigo>" << std::endl;
+        LOG_ERROR("Uso: " << argv[0] << " <ID_do_artigo>");
         return 1;
     }
 
@@ -51,16 +56,13 @@ int main(int argc, char* argv[]) {
     try {
         search_id = std::stoi(argv[1]);
     } catch (const std::exception& e) {
-        std::cerr << "ERRO: O ID informado ('" << argv[1] << "') não é um número válido." << std::endl;
+        LOG_ERROR("ERRO: O ID informado ('" << argv[1] << "') não é um número válido.");
         return 1;
     }
-
-    // --- CORREÇÃO AQUI ---
-    // Usar caminho absoluto dentro do container Docker
+    
     const std::string data_file_path = "/data/data_file.dat";
-    // ---------------------
 
-    std::cout << "Buscando pelo ID: " << search_id << std::endl;
+   LOG_INFO("Buscando pelo ID: " << search_id);
 
     try {
         // 2. Inicializa o HashingFile (que deve ABRIR o arquivo existente)
@@ -74,25 +76,25 @@ int main(int argc, char* argv[]) {
         // 4. Verifica o resultado
         // A função find_by_id retorna ID -1 se não encontrar
         if (found_artigo.ID != -1) {
-            std::cout << "\nRegistro encontrado com sucesso!" << std::endl;
+           LOG_INFO("\nRegistro encontrado com sucesso!");
             print_artigo(found_artigo);
             std::cout.flush();
 
-            std::cout << "\n--- Métricas da Busca ---" << std::endl;
-            std::cout << "Blocos lidos para encontrar o registro: " << blocks_read << std::endl;
-            std::cout << "Total de blocos no arquivo de dados: " << blocks_qntd << std::endl;
+           LOG_INFO("\n--- Métricas da Busca ---");
+           LOG_INFO("Blocos lidos para encontrar o registro: " << blocks_read);
+           LOG_INFO("Total de blocos no arquivo de dados: " << blocks_qntd);
         } else {
-            std::cout << "\nRegistro com ID " << search_id << " nao foi encontrado." << std::endl;
-            std::cout << "--- Métricas da Busca ---" << std::endl;
-            std::cout << "Blocos lidos durante a tentativa: " << blocks_read << std::endl;
-            std::cout << "Total de blocos no arquivo de dados: " << blocks_qntd << std::endl;
+           LOG_INFO("\nRegistro com ID " << search_id << " nao foi encontrado.");
+           LOG_INFO("--- Métricas da Busca ---");
+           LOG_INFO("Blocos lidos durante a tentativa: " << blocks_read);
+           LOG_INFO("Total de blocos no arquivo de dados: " << blocks_qntd);
         }
 
     } catch (const std::runtime_error& e) {
-        std::cerr << "ERRO FATAL durante a busca: " << e.what() << std::endl;
+        LOG_ERROR("ERRO FATAL durante a busca: " << e.what());
         return 1;
     } catch (...) {
-         std::cerr << "ERRO FATAL desconhecido durante a busca." << std::endl;
+         LOG_ERROR("ERRO FATAL desconhecido durante a busca.");
         return 1;
     }
 

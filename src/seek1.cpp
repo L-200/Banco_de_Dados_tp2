@@ -6,8 +6,10 @@
 
 #include "record.hpp"
 #include "BPlusTree.hpp"
+#include "log.hpp"
 
 // Função auxiliar para imprimir os campos de um artigo
+//não tem porquê de inserir log aqui, essa é a  principal funcionalidade do código !
 void print_artigo(const Artigo& artigo) {
     std::cout << "------------------------------------------" << std::endl;
     std::cout << "ID: " << artigo.ID << std::endl;
@@ -23,7 +25,7 @@ void print_artigo(const Artigo& artigo) {
 int main(int argc, char* argv[]) {
     // 1. Validação dos argumentos
     if (argc != 2) {
-        std::cerr << "Uso: " << argv[0] << " <ID_do_artigo>" << std::endl;
+        LOG_ERROR("Uso: " << argv[0] << " <ID_do_artigo>");
         return 1;
     }
 
@@ -31,17 +33,14 @@ int main(int argc, char* argv[]) {
     try {
         search_id = std::stoi(argv[1]);
     } catch (const std::exception& e) {
-        std::cerr << "ERRO: O ID informado ('" << argv[1] << "') nao e um numero valido." << std::endl;
+        LOG_ERROR("ERRO: O ID informado ('" << argv[1] << "') não e um numero valido.");
         return 1;
     }
 
-    // --- CORREÇÃO AQUI ---
-    // Usar caminhos absolutos dentro do container Docker
     const std::string primary_index_path = "/data/primary_index.idx";
     const std::string data_file_path = "/data/data_file.dat";
-    // ---------------------
 
-    std::cout << "Buscando pelo ID no indice primario: " << search_id << std::endl;
+    LOG_INFO("Buscando pelo ID no indice primario: ");
 
     try {
         // 2. Inicializa o índice (que agora deve ABRIR o arquivo existente)
@@ -53,58 +52,58 @@ int main(int argc, char* argv[]) {
 
         // 4. Verifica o resultado
         if (data_ptr != -1) {
-            std::cout << "\nChave encontrada no indice! Ponteiro para dados: " << data_ptr << std::endl;
-            std::cout << "Lendo registro do arquivo de dados..." << std::endl;
+            LOG_INFO("\nChave encontrada no indice! Ponteiro para dados: " << data_ptr);
+            LOG_INFO("Lendo registro do arquivo de dados...");
 
             // Abre o arquivo de dados para ler o registro
             std::ifstream data_file(data_file_path, std::ios::binary);
             if (!data_file) {
-                 // Adicionado log mais específico
-                 std::cerr << "ERRO FATAL: Nao foi possivel abrir o arquivo de dados '" << data_file_path << "' para leitura." << std::endl;
+
+                LOG_ERROR("ERRO FALTAR: Não foi possivel abrir o arquivo de dados '" << data_file_path << "' para leitura.");
                 throw std::runtime_error("Falha ao abrir arquivo de dados.");
             }
 
             // Posiciona no local exato
             data_file.seekg(data_ptr);
             if (!data_file) { // Verifica se seekg falhou
-                 data_file.close();
-                 std::cerr << "ERRO FATAL: Falha ao posicionar no arquivo de dados no offset " << data_ptr << std::endl;
-                 throw std::runtime_error("Falha no seekg do arquivo de dados.");
+                data_file.close();
+                LOG_ERROR("ERRO FATAL: Falha ao posicionar no arquivo de dados no offset " << data_ptr);
+                throw std::runtime_error("Falha no seekg do arquivo de dados.");
             }
 
 
             Artigo found_artigo;
             // Lê o registro
             if (!data_file.read(reinterpret_cast<char*>(&found_artigo), sizeof(Artigo))) {
-                 data_file.close();
-                 std::cerr << "ERRO FATAL: Falha ao ler o registro do arquivo de dados no offset " << data_ptr << std::endl;
-                 std::cerr << "  -> Verifique se o data_ptr esta correto e se o arquivo de dados nao esta corrompido." << std::endl;
-                 throw std::runtime_error("Falha na leitura do arquivo de dados.");
+                data_file.close();
+                LOG_ERROR("ERRO FATAL: Falha ao ler o registro do arquivo de dados no offset " << data_ptr);
+                LOG_ERROR("  -> Verifique se o data_ptr esta correto e se o arquivo de dados não esta corrompido.");
+                throw std::runtime_error("Falha na leitura do arquivo de dados.");
             }
             data_file.close();
 
-            std::cout << "\nRegistro encontrado com sucesso!" << std::endl;
+            LOG_INFO("\nRegistro encontrado com sucesso!");
             print_artigo(found_artigo);
         } else {
-            std::cout << "\nRegistro com ID " << search_id << " nao foi encontrado no indice." << std::endl;
+            LOG_INFO("\nRegistro com ID " << search_id << " não foi encontrado no indice.");
         }
 
         // 5. Exibe as métricas
-        std::cout << "\n--- Metricas da Busca no Indice Primario ---" << std::endl;
-        std::cout << "Blocos lidos no arquivo de indice: " << blocks_read_index << std::endl;
+        LOG_INFO("\n--- Metricas da Busca no Indice Primario ---");
+        LOG_INFO("Blocos lidos no arquivo de indice: " << blocks_read_index);
         // Adicionado try-catch em volta de get_total_blocks para segurança
         try {
-             std::cout << "Total de blocos no arquivo de indice primario: " << primary_index.get_total_blocks() << std::endl;
+            LOG_INFO("Total de blocos no arquivo de indice primario: " << primary_index.get_total_blocks());
         } catch (...) {
-             std::cerr << "AVISO: Nao foi possivel obter o total de blocos do indice." << std::endl;
+            LOG_ERROR("AVISO: não foi possivel obter o total de blocos do indice.");
         }
 
 
     } catch (const std::runtime_error& e) {
-        std::cerr << "ERRO FATAL durante a busca: " << e.what() << std::endl;
+        LOG_ERROR("ERRO FATAL durante a busca: " << e.what());
         return 1;
     } catch (...) {
-         std::cerr << "ERRO FATAL desconhecido durante a busca." << std::endl;
+        LOG_ERROR("ERRO FATAL desconhecido durante a busca.");
         return 1;
     }
 

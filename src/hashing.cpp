@@ -6,6 +6,7 @@
 
 #include "hashing.hpp" 
 #include "record.hpp"
+#include "log.hpp"
 
 // Construtor 
 HashingFile::HashingFile(const std::string& data_file_path, long num_total_blocks) {
@@ -14,9 +15,11 @@ HashingFile::HashingFile(const std::string& data_file_path, long num_total_block
     data_file.open(data_file_path, std::ios::in | std::ios::out | std::ios::binary);
 
     if (!data_file.is_open()) {
+        LOG_DEBUG("[HASHING]: Arquivo de dados inexistente, tentando criar agora...");
         // Criando novo arquivo zerado
         std::ofstream create_file(data_file_path, std::ios::out | std::ios::binary | std::ios::trunc);
         if (!create_file) {
+            LOG_ERROR("[HASHING]: Arquivo de dados não pôde ser criado");
             throw std::runtime_error("ERRO: não foi possível criar o arquivo de dados");
         }
         create_file.close();
@@ -24,8 +27,11 @@ HashingFile::HashingFile(const std::string& data_file_path, long num_total_block
         // Reabrindo o arquivo para leitura e escrita
         data_file.open(data_file_path, std::ios::in | std::ios::out | std::ios::binary);
         if (!data_file.is_open()) {
+            LOG_ERROR("[HASHING]: Arquivo de dados não pôde ser reaberto");
             throw std::runtime_error("ERRO: não foi possível reabrir o arquivo de dados");
         }
+
+        LOG_DEBUG("[HASHING]: Arquivo de dados criado com sucesso");
 
         // Inicializando todos os blocos vazios
         DataBlock empty_block{};
@@ -38,12 +44,15 @@ HashingFile::HashingFile(const std::string& data_file_path, long num_total_block
 
 //Fechando o arquivo
 HashingFile::~HashingFile() {
+    LOG_DEBUG("[HASHING]: Tentando fechar arquivo de dados");
     if (!block_cache.empty()) {
+        LOG_DEBUG("[HASHING]: Limpando cache antes de fechar o arquivo de dados");
         flush_cache();
     }
     if (data_file.is_open()) {
         data_file.close();
     }
+    LOG_DEBUG("[HASHING]: Arquivo de dados fechado com sucesso");
 }
 
 f_ptr HashingFile::insert(const Artigo& new_artigo) {
@@ -66,7 +75,7 @@ f_ptr HashingFile::insert(const Artigo& new_artigo) {
         current_block_num = (current_block_num + 1) % total_blocks;
         //Se voltamos ao bloco inicial, não temos mais espaço para inserir o novo arquivo
         if (current_block_num == initial_block) {
-            std::cerr << "ERRO: Arquivo de dados está cheio!" <<std::endl;
+            LOG_ERROR("ERRO: Arquivo de dados está cheio!");
             return -1;
         }
     }
@@ -150,6 +159,7 @@ void HashingFile::write_block(long block_number, const DataBlock& block) {
     data_file.seekp(offset); // Posiciona o leitor de escritura
 
     if (!data_file.write(reinterpret_cast<const char*>(&block), sizeof(DataBlock))) {
+        LOG_ERROR("[HASHING] Falha em escrever um bloco");
         throw std::runtime_error ("ERRO HASHING WRITE: Falha ao escrever bloco ");
     }
     data_file.flush(); 
