@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <cstdlib> // Para std::stoi
 #include <cstring> //para auxiliar no print
+#include <chrono>
+#include <iomanip>
 
 #include "record.hpp"
 #include "hashing.hpp"
@@ -46,6 +48,8 @@ void print_artigo(const Artigo& artigo) {
 }
 
 int main(int argc, char* argv[]) {
+
+    auto start_time = std::chrono::high_resolution_clock::now();
     // 1. Validação dos argumentos
     if (argc != 2) {
         LOG_ERROR("Uso: " << argv[0] << " <ID_do_artigo>");
@@ -89,6 +93,14 @@ int main(int argc, char* argv[]) {
            LOG_INFO("Blocos lidos durante a tentativa: " << blocks_read);
            LOG_INFO("Total de blocos no arquivo de dados: " << blocks_qntd);
         }
+
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = end_time - start_time;
+        std::chrono::duration<double, std::milli> duration_ms_fp = duration;
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+        LOG_INFO("Tempo de execucao do findrec: "
+                        << std::fixed << std::setprecision(3) // mostra 3 casas decimais
+                        << duration_ms_fp.count() << " ms");
 
     } catch (const std::runtime_error& e) {
         LOG_ERROR("ERRO FATAL durante a busca: " << e.what());

@@ -4,9 +4,10 @@
 #include <string>         // Para std::string
 #include <vector>         // (Não diretamente necessário, mas bom ter)
 #include <stdexcept>      // Para std::runtime_error
-#include <cstdlib>        // (Não diretamente necessário aqui)
 #include <cstring>        // Para std::strncpy, std::strcmp, strnlen
 #include <functional>     // Para std::hash
+#include <chrono>
+#include <iomanip> // Para stepprecision
 
 // === Headers do projeto ===
 #include "record.hpp"         // Define a struct Artigo
@@ -38,6 +39,8 @@ void print_artigo(const Artigo& artigo) {
 
 // === Função principal do programa seek2 ===
 int main(int argc, char* argv[]) {
+    
+    auto start_time = std::chrono::high_resolution_clock::now();
     // Verificando se pelo menos um argumento (parte do título) foi passado
     if (argc < 2) {
         LOG_ERROR("Uso: " << argv[0] << " <Titulo_do_artigo>" << std::endl);
@@ -137,7 +140,13 @@ int main(int argc, char* argv[]) {
         } catch (...) {
             LOG_ERROR("AVISO: Não foi possivel obter o total de blocos do indice secundario.");
         }
-
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = end_time - start_time;
+        std::chrono::duration<double, std::milli> duration_ms_fp = duration;
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+        LOG_INFO("Tempo de execucao do seek2: "
+                        << std::fixed << std::setprecision(3) // mostra 3 casas decimais
+                        << duration_ms_fp.count() << " ms");
 
     } catch (const std::runtime_error& e) {
         LOG_ERROR("ERRO FATAL durante a busca: " << e.what());

@@ -9,6 +9,8 @@
 #include <climits>
 #include <functional>
 #include <algorithm> // Para find_first_not_of / find_last_not_of
+#include <chrono>
+#include <iomanip>
 
 // === Headers do projeto ===
 #include "record.hpp"
@@ -134,6 +136,8 @@ bool parse_csv_line(const std::string& line, Artigo& artigo) {
 
 
 int main(int argc, char* argv[]) {
+
+    auto start_time = std::chrono::high_resolution_clock::now();
     const std::string input_csv_path = argv[1];
     std::ifstream input_file(input_csv_path);
     if (!input_file.is_open()) {
@@ -207,9 +211,13 @@ int main(int argc, char* argv[]) {
 
         input_file.close();
 
-        LOG_INFO("--- CARGA DE DADOS CONCLUÍDA ---\n");
-        LOG_INFO("Total de linhas físicas lidas: " << physical_line_number - 1 << "\n");
-        LOG_INFO("Total de artigos inseridos: " << inserted_count << "\n");
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = end_time - start_time;
+        std::chrono::duration<double, std::milli> duration_ms_fp = duration;
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+        LOG_INFO("Tempo de execucao do upload: "
+                        << std::fixed << std::setprecision(3) // mostra 3 casas decimais
+                        << duration_ms_fp.count() << " ms");
 
     } catch (const std::runtime_error& e) {
         LOG_ERROR("ERRO FATAL: " << e.what() << "\n");
