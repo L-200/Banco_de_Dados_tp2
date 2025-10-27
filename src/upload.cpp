@@ -11,6 +11,7 @@
 #include <algorithm> // Para find_first_not_of / find_last_not_of
 #include <chrono>
 #include <iomanip>
+#include <filesystem>
 
 // === Headers do projeto ===
 #include "record.hpp"
@@ -138,18 +139,43 @@ bool parse_csv_line(const std::string& line, Artigo& artigo) {
 int main(int argc, char* argv[]) {
 
     auto start_time = std::chrono::high_resolution_clock::now();
-    const std::string input_csv_path = argv[1];
-    std::ifstream input_file(input_csv_path);
-    if (!input_file.is_open()) {
-        LOG_ERROR("Erro ao abrir aquivo");
+    // Pegando o diretório de dados da variável de ambiente
+
+    const char* data_dir_env = std::getenv("DATA_DIR");
+    if (data_dir_env == nullptr) {
+        LOG_ERROR("ERRO FATAL: Variavel de ambiente DATA_DIR nao definida.");
+        LOG_INFO("Execute: export DATA_DIR=./data/db");
         return 1;
     }
+    std::string data_dir(data_dir_env);
+
+    // Validando o argumento de entrada (path do CSV)
+    if (argc < 2) {
+        LOG_ERROR("ERRO FATAL: Caminho para o .csv nao fornecido.");
+        LOG_INFO("Uso: ./bin/upload <caminho_para_csv>");
+        return 1;
+    }
+    const std::string input_csv_path = argv[1];
+    std::ifstream input_file;
 
     try {
-        HashingFile data_file("/data/data_file.dat", blocks_qntd);
-        BPlusTree primary_index("/data/primary_index.idx");
-        BPlusTree_long secondary_index("/data/secondary_index.idx");
-        LOG_INFO("Estrutura inicializadas.\n");
+
+        std::filesystem::create_directories(data_dir);
+
+        input_file.open(input_csv_path);
+        if (!input_file.is_open()) {
+            LOG_ERROR("Erro ao abrir aquivo: " + input_csv_path);
+            return 1;
+        }
+
+        std::string data_file_path = data_dir + "/data_file.dat";
+        std::string primary_index_path = data_dir + "/primary_index.idx";
+        std::string secondary_index_path = data_dir + "/secondary_index.idx";
+
+        HashingFile data_file(data_file_path, blocks_qntd);
+        BPlusTree primary_index(primary_index_path);
+        BPlusTree_long secondary_index(secondary_index_path);
+        LOG_INFO("Estrutura inicializadas em: " + data_dir);
 
         std::string line_buffer;
         std::string complete_record_line;

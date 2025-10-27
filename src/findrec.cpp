@@ -64,7 +64,16 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    const std::string data_file_path = "/data/data_file.dat";
+    const char* data_dir_env = std::getenv("DATA_DIR");
+    if (data_dir_env == nullptr) {
+        LOG_ERROR("ERRO FATAL: Variavel de ambiente DATA_DIR nao definida.");
+        LOG_INFO("Execute: export DATA_DIR=./data");
+        return 1;
+    }
+    std::string data_dir(data_dir_env);
+
+    //constrói o caminho dinamicamente
+    std::string data_file_path = data_dir + "/data_file.dat";
 
    LOG_INFO("Buscando pelo ID: " << search_id);
 

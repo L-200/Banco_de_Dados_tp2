@@ -10,8 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # definir diretório de trabalho
 WORKDIR /app
 
-# copiar arquivos do projeto para o diretório de trabalho
-COPY . .
+# copiar arquivos do projeto para o diretório de trabalho (com exceção do artigos.csv)
+COPY Makefile /app/Makefile
+COPY src/ /app/src/
+COPY include/ /app/include/
 
 # compilar o código-fonte
 RUN make build

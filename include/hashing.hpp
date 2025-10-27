@@ -48,7 +48,7 @@ private:
 
     DataBlock read_block(long block_number); // Lê um bloco do disco
 
-    void flush_cache();
+    void flush_cache(); // Transfere as mudanças feitas no bloco cache para o bloco no disco
 
     void write_block(long block_number, const DataBlock& block); // Escreve um bloco no disco
 

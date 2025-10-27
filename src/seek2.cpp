@@ -61,9 +61,17 @@ int main(int argc, char* argv[]) {
     std::strncpy(truncated_search_titulo, search_titulo_completo.c_str(), 300);
     truncated_search_titulo[300] = '\0'; // Garante terminação nula
 
-    // Definindo os caminhos absolutos para os arquivos de dados e índice
-    const std::string secondary_index_path = "/data/secondary_index.idx";
-    const std::string data_file_path = "/data/data_file.dat";
+    const char* data_dir_env = std::getenv("DATA_DIR");
+    if (data_dir_env == nullptr) {
+        LOG_ERROR("ERRO FATAL: Variavel de ambiente DATA_DIR nao definida.");
+        LOG_INFO("Execute: export DATA_DIR=./data");
+        return 1;
+    }
+    std::string data_dir(data_dir_env);
+
+    //constrói o caminho dinamicamente
+    std::string data_file_path = data_dir + "/data_file.dat";
+    std::string secondary_index_path = data_dir + "/secondary_index.idx";
 
     LOG_INFO("Buscando pelo Titulo (truncado para 300 caracteres): \"" << truncated_search_titulo << "\"");
 

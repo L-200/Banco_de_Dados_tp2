@@ -17,28 +17,40 @@ enum class LogLevel {
     DEBUG = 3  // Mensagens detalhadas para depuração
 };
 
+// Função auxiliar para converter enum class para int (permitir comparações)
+inline int logLevelValue(LogLevel l) {
+    return static_cast<int>(l);
+}
+
+// Função auxiliar para remover espaços e quebras de linha
+inline std::string trim(const std::string &s) {
+    size_t start = s.find_first_not_of(" \n\r\t");
+    size_t end = s.find_last_not_of(" \n\r\t");
+    return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
+}
+
 // Função (inline) para obter o nível de log atual
-//lê a variável de ambiente LOG_LEVEL apenas uma vez e guarda o resultado
+// lê a variável de ambiente LOG_LEVEL apenas uma vez e guarda o resultado
 inline LogLevel getCurrentLogLevel() {
-    static const LogLevel currentLevel = []() { // <-- Lambda auto-executável (função sem nome diretamente no código)
+    static const LogLevel currentLevel = []() {
         LogLevel level = LogLevel::INFO; // Padrão é INFO
         const char* level_str = std::getenv("LOG_LEVEL"); // Lê variável de ambiente
         if (level_str) {
-            std::string level_s = level_str;
+            std::string level_s = trim(level_str);        // Remove espaços e quebras de linha
             std::transform(level_s.begin(), level_s.end(), level_s.begin(), ::tolower); // Converte para minúsculas
 
             // Compara com os níveis conhecidos
             if (level_s == "error") level = LogLevel::ERROR;
-            else if (level_s == "warn")  level = LogLevel::WARN;
-            else if (level_s == "info")  level = LogLevel::INFO;
+            else if (level_s == "warning") level = LogLevel::WARN;
+            else if (level_s == "info") level = LogLevel::INFO;
             else if (level_s == "debug") level = LogLevel::DEBUG;
             else {
                 // Aviso se o valor for inválido
-                std::cerr << "[WARN] LOG_LEVEL inválido ('" << level_str << "'). Usando padrão INFO." << std::endl;
+                std::cerr << "LOG_LEVEL inválido ('" << level_str << "'). Usando padrão INFO." << std::endl;
             }
         }
         return level; // Retorna o nível determinado
-    }(); // <-- Executa a lambda AGORA para inicializar currentLevel
+    }(); // Executa a lambda AGORA para inicializar currentLevel
 
     return currentLevel; // Retorna o nível (já calculado)
 }
@@ -48,12 +60,12 @@ inline LogLevel getCurrentLogLevel() {
 /*os ... indicam número variável de argumentos adicionais (permite o uso de <<)*/
 #define LOG_MSG(level, prefix, ...) \
     do { \
-        if (getCurrentLogLevel() >= level) { \
+        if (logLevelValue(getCurrentLogLevel()) >= logLevelValue(level)) { \
             /* Usa ostringstream para construir a mensagem permitindo '<<' */ \
             std::ostringstream oss_log_macro; \
             oss_log_macro << prefix << __VA_ARGS__; \
             /* Envia para cerr (ERRO/WARN) ou cout (INFO/DEBUG) */ \
-            if (level <= LogLevel::WARN) { \
+            if (logLevelValue(level) <= logLevelValue(LogLevel::WARN)) { \
                 std::cerr << oss_log_macro.str() << std::endl; \
             } else { \
                 std::cout << oss_log_macro.str() << std::endl; \
@@ -66,6 +78,5 @@ inline LogLevel getCurrentLogLevel() {
 #define LOG_WARN(...)  LOG_MSG(LogLevel::WARN,  "[WARN]  ", __VA_ARGS__)
 #define LOG_INFO(...)  LOG_MSG(LogLevel::INFO,  "[INFO]  ", __VA_ARGS__)
 #define LOG_DEBUG(...) LOG_MSG(LogLevel::DEBUG, "[DEBUG] ", __VA_ARGS__)
-
 
 #endif // LOG_HPP
