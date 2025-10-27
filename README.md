@@ -20,6 +20,9 @@ Roberta Graziela de Oliveira Brasil
 * ## Para build via docker (construir a imagem Docker com o ambiente e os programas compilados)
     * Docker instalado e rodando
 
+* ## Obs:
+    * Se você estiver clonando esse repositório precisará do git lfs para baixar o artigo.csv
+
 # Instruções de Build
 
 * ## Local:
