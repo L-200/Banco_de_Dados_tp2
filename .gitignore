@@ -1,13 +1,21 @@
-# ignorar arquivos de objeto
+# Ignorar arquivos objeto
 *.o
 
-# ignorar todo o conteúdo do diretório de dados EXCETO o arquivo .gitkeep no subdiretório db, para manter o diretório no repo
+# Ignorar todo o conteúdo de /data
 /data/*
+#Exceto o artigo.csv
+!/data/artigo.csv
+
+# Manter o diretório /data/db para poder versionar o .gitkeep
+!/data/db/
+# Dentro de /data/db, ignorar tudo
+/data/db/*
+# Exceto o .gitkeep
 !/data/db/.gitkeep
 
-# ignorar todo o conteúdo do diretório de binários gerados EXCETO o arquivo .gitkeep, para manter o diretório no repo
+# Ignorar todo o conteúdo de /bin, exceto o .gitkeep
 /bin/*
 !/bin/.gitkeep
 
-# ignorar o vscode settings
+# Ignorar configurações do VSCode
 .vscode/*

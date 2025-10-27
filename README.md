@@ -20,8 +20,6 @@ Roberta Graziela de Oliveira Brasil
 * ## Para build via docker (construir a imagem Docker com o ambiente e os programas compilados)
     * Docker instalado e rodando
 
-* ## artigo.csv utilizado no /data
-    [Clique aqui para baixá-lo](./data/artigo.csv)
 # Instruções de Build
 
 * ## Local:
