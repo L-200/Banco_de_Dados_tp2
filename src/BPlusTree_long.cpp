@@ -117,7 +117,6 @@ BPlusTree_long::~BPlusTree_long() {
         index_file.seekp(0); // vai para o início do arquivo
         if (!index_file.write(reinterpret_cast<const char*>(&metadata), sizeof(BPlusTree_long_Metadata))) {
             LOG_ERROR("Falha ao salvar metadados no destrutor da árvore B+ (LONG)!");
-            throw std::runtime_error("ERRO FATAL: Falha em salvar metadados do índice secundário");
 
         } else {
             index_file.flush(); // garante que os metadados sejam escritos

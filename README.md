@@ -40,7 +40,7 @@ Roberta Graziela de Oliveira Brasil
 
     **Definindo DATA_DIR (OBRIGATÓRIO PARA TODOS OS PROGRAMAS):**
     ```bash
-    exportDATA_DIR=./data/db
+    export DATA_DIR=./data/db
     ```
 
     **Definindo Nível de Log (Opcional):**

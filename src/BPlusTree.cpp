@@ -89,8 +89,8 @@ BPlusTree::BPlusTree(const std::string& index_file_path) {
             block_count = metadata.block_count;
 
              // validação básica
-            if (root_ptr < DATA_START_OFFSET || block_count == 0 || (root_ptr + sizeof(BPlusTreeNode) > file_size && block_count > 0)) {
-                LOG_ERROR("AVISO: Metadados lidos parecem invalidos! root_ptr=" << root_ptr << ", block_count=" << block_count << ", file_size=" << file_size);
+            if (root_ptr < DATA_START_OFFSET || block_count == 0 || 
+            (static_cast<size_t>(root_ptr) + sizeof(BPlusTreeNode) > static_cast<size_t>(file_size) && block_count > 0)) {
             }
         }
     }
@@ -117,7 +117,6 @@ BPlusTree::~BPlusTree() {
         index_file.seekp(0); // vai para o início do arquivo
         if (!index_file.write(reinterpret_cast<const char*>(&metadata), sizeof(BPlusTreeMetadata))) {
             LOG_ERROR("Falha ao salvar metadados no destrutor da árvore B+ (INT)!");
-            throw std::runtime_error("ERRO FATAL: Falha em salvar metadados do índice primário");
 
         } else {
             index_file.flush(); // garante que os metadados sejam escritos
