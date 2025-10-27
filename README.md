@@ -18,7 +18,7 @@ Roberta Graziela de Oliveira Brasil
     * Ambiente Linux
 
 * ## Para build via docker (construir a imagem Docker com o ambiente e os programas compilados)
-    * Docker instalado e rodado
+    * Docker instalado e rodando
 
 * ## artigo.csv utilizado no /data
     [Clique aqui para baixá-lo](./data/artigo.csv)
